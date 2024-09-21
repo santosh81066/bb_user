@@ -1,4 +1,4 @@
-package com.example.bb_user
+package com.example.assignmet_1
 
 import io.flutter.embedding.android.FlutterActivity
 
