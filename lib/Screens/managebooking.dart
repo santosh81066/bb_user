@@ -20,7 +20,7 @@ class _ManageBookingScreenState extends State<ManageBookingScreen>
     super.initState();
 
     for (int i = 0; i < 1; i++) {
-      _items.add(VenuesListmodel("Swagath Grand", 'images/flutter.jpg', 3.5, 84,
+      _items.add(VenuesListmodel("Swaga Grand", 'images/flutter.jpg', 3.5, 84,
           'Bachupally, Hyderabad\nAug 25, 2023'));
     }
     _tabController = TabController(length: 3, vsync: this);
