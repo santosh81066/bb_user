@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:otp_text_field/otp_field.dart';
-
-import '../Providers/loaded.dart';
 import '../Providers/phoneauthnotifier.dart';
 import '../Widgets/evaluatedbutton.dart';
 import '../Widgets/heading.dart';
 import '../Widgets/textfield.dart';
+import 'package:bb_user/Colors/coustcolors.dart';
+import 'package:bb_user/Providers/registrationnotifier.dart';
+import 'package:bb_user/models/registrationstatemodel.dart';
+
+// Step 1: Define the StateNotifierProvider
+final registrationProvider = StateNotifierProvider<RegistrationNotifier, RegistrationState>((ref) {
+  return RegistrationNotifier();
+});
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -15,241 +20,192 @@ class RegistrationScreen extends StatefulWidget {
   State<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
-TextEditingController _edtxtMail = TextEditingController();
-TextEditingController _edtxtName = TextEditingController();
-TextEditingController _edtxtpassword = TextEditingController();
-TextEditingController _edtxtNum = TextEditingController();
+// Controllers for input fields
+final TextEditingController _edtxtMail = TextEditingController();
+final TextEditingController _edtxtName = TextEditingController();
+final TextEditingController _edtxtPassword = TextEditingController();
+final TextEditingController _edtxtConfirmPassword = TextEditingController();
+final TextEditingController _edtxtNum = TextEditingController();
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
-  final _validationkey = GlobalKey<FormState>();
+  final _validationKey = GlobalKey<FormState>();
+  bool _isPasswordVisible = false;
+
+  // Password validation function
+  bool isValidPassword(String value) {
+    final RegExp passwordRegex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$');
+    return passwordRegex.hasMatch(value);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Container(
-                child: Heading(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: screenHeight),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Heading(
                   sText1: "",
                   sText2: "Register an Account",
                   bVisibil: false,
                 ),
-              ),
-            ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: ClipRRect(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30.0),
-                  topRight: Radius.circular(30.0),
-                ),
-                child: Container(
-                  color: Colors.white,
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Form(
-                      key: _validationkey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CoustTextfield(
-                            isVisible: false,
-                            controller: _edtxtMail,
-                            inputtype: TextInputType.emailAddress,
-                            hint: "Mail",
-                            suffixIcon: const Icon(Icons.person),
-                            radius: 8.0,
-                            width: 10,
-                            validator: (_edtxtMail) {
-                              final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                              if (_edtxtMail == null || _edtxtMail.isEmpty) {
-                                return 'Please enter an email address';
-                              } else if (!emailRegex.hasMatch(_edtxtMail)) {
-                                return 'Please enter a valid email address';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          CoustTextfield(
-                            isVisible: false,
-                            controller: _edtxtName,
-                            inputtype: TextInputType.name,
-                            hint: "Name",
-                            radius: 8,
-                            width: 10,
-                            validator: (_edtxtName) {
-                              if (_edtxtName == null || _edtxtName.isEmpty) {
-                                return 'Please enter an Name';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          CoustTextfield(
-                            isVisible: false,
-                            controller: _edtxtpassword,
-                            password: true,
-                            hint: "Password",
-                            radius: 8,
-                            width: 10,
-                            validator: (_edtxtpassword) {
-                              if (_edtxtpassword == null ||
-                                  _edtxtpassword.isEmpty) {
-                                return 'Please enter an password';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Row(
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(30.0),
+                      topRight: Radius.circular(30.0),
+                    ),
+                    child: Container(
+                      color: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Form(
+                          key: _validationKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Expanded(
-                                flex: 1,
-                                child: CoustTextfield(
-                                  isVisible: false,
-                                  controller: _edtxtNum,
-                                  inputtype: TextInputType.phone,
-                                  hint: "Phone Number",
-                                  radius: 8,
-                                  width: 10,
-                                  validator: (_edtxtNum) {
-                                    if (_edtxtNum == null ||
-                                        _edtxtNum.isEmpty) {
-                                      return 'Please enter an Mobile Number';
-                                    }
-                                    if ((_edtxtNum.length < 10) &&
-                                        (_edtxtNum.length > 10)) {
-                                      return 'Please enter 10 digit Mobile Number';
-                                    }
-                                    return null;
-                                  },
-                                ),
+                              CoustTextfield(
+                                isVisible: false,
+                                controller: _edtxtMail,
+                                inputtype: TextInputType.emailAddress,
+                                hint: "Mail",
+                                suffixIcon: const Icon(Icons.email),
+                                radius: 8.0,
+                                width: double.infinity,
+                                validator: (value) {
+                                  final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter an email address';
+                                  } else if (!emailRegex.hasMatch(value)) {
+                                    return 'Please enter a valid email address';
+                                  }
+                                  return null;
+                                },
                               ),
-                              Expanded(
-                                flex: 1,
-                                child: Consumer(
-                                  builder: (context, ref, child) {
-                                    var loaded = ref.watch(loadingProvider);
-                                    return CoustEvalButton(
-                                      onPressed: loaded == true
-                                          ? null
-                                          : () {
-                                              ref
-                                                  .read(phoneAuthProvider
-                                                      .notifier)
-                                                  .phoneAuth(
-                                                      context,
-                                                      _edtxtNum.text.trim(),
-                                                      ref);
-                                            },
-                                      buttonName: "Verify",
-                                      radius: 8,
-                                      width: double.infinity,
-                                      FontSize: 20,
-                                      isLoading: loaded,
-                                    );
+                              const SizedBox(height: 10),
+                              CoustTextfield(
+                                isVisible: false,
+                                controller: _edtxtName,
+                                inputtype: TextInputType.name,
+                                hint: "Name",
+                                radius: 8,
+                                width: double.infinity,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter a name';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              
+                              // Password field: Remove the null check
+                              CoustTextfield(
+                                isVisible: !_isPasswordVisible,
+                                controller: _edtxtPassword,
+                                password: true,
+                                hint: "Password",
+                                radius: 8,
+                                width: double.infinity,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _isPasswordVisible ? Icons.lock_open : Icons.lock,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isPasswordVisible = !_isPasswordVisible;
+                                    });
                                   },
                                 ),
+                                validator: (value) {
+                                  // Only check if password is valid, not empty
+                                  if (!isValidPassword(value ?? "")) {
+                                    return 'Password must contain at least 8 characters, a letter, and a number';
+                                  }
+                                  // return null;
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              
+                              // Confirm password field: Remove the null check
+                              CoustTextfield(
+                                isVisible: !_isPasswordVisible,
+                                controller: _edtxtConfirmPassword,
+                                password: true,
+                                hint: "Confirm Password",
+                                radius: 8,
+                                width: double.infinity,
+                                validator: (value) {
+                                  if (value != _edtxtPassword.text.trim()) {
+                                    return 'Passwords do not match';
+                                  }
+                                  // return null;
+                                },
+                              ),
+                              
+                              const SizedBox(height: 10),
+                              
+                              CoustTextfield(
+                                isVisible: false,
+                                controller: _edtxtNum,
+                                inputtype: TextInputType.phone,
+                                hint: "Phone Number",
+                                radius: 8,
+                                width: double.infinity,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter a phone number';
+                                  } else if (value.length != 10) {
+                                    return 'Please enter a valid 10-digit phone number';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              
+                              // Step 2: Using Consumer widget to access the state and interact with RegistrationNotifier
+                              Consumer(
+                                builder: (context, ref, child) {
+                                  final registrationState = ref.watch(registrationProvider);
+
+                                  return CoustEvalButton(
+                                    buttonName: "Register",
+                                    width: double.infinity,
+                                    bgColor: CoustColors.colrButton3,
+                                    radius: 8,
+                                    FontSize: 20,
+                                    onPressed: () async {
+                                      if (_validationKey.currentState!.validate()) {
+                                        // Step 3: Trigger the registration logic
+                                        ref.read(registrationProvider.notifier).register(
+                                          context,
+                                          _edtxtName.text.trim(),
+                                          _edtxtMail.text.trim(),
+                                          _edtxtPassword.text.trim(),
+                                          _edtxtNum.text.trim(),
+                                        );
+                                      }
+                                    },
+                                  );
+                                },
                               ),
                             ],
                           ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Consumer(
-                            builder: (BuildContext context, WidgetRef ref,
-                                Widget? child) {
-                              var verfication = ref.watch(phoneAuthProvider);
-
-                              return verfication.vrfCompleted == true
-                                  ? Row(
-                                      children: [
-                                        Expanded(
-                                          flex: 1,
-                                          child: Consumer(
-                                            builder: (BuildContext context,
-                                                WidgetRef ref, Widget? child) {
-                                              return OTPTextField(
-                                                onChanged: (value) {
-                                                  print("Otp Value ${value}");
-                                                  ref
-                                                      .read(phoneAuthProvider
-                                                          .notifier)
-                                                      .updateOtp(value);
-                                                },
-                                                length: 6,
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : Container();
-                            },
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          SizedBox(
-                            width: double.infinity,
-                            child: Consumer(
-                              builder: (BuildContext context, WidgetRef ref,
-                                  Widget? child) {
-                                var loader = ref.watch(loadingProvider2);
-                                return CoustEvalButton(
-                                  onPressed: loader == true
-                                      ? null
-                                      : () {
-                                          if (_validationkey.currentState!
-                                              .validate()) {
-                                            // print("OTP: ${ref.read(phoneAuthProvider).otp==null?"Null":ref.read(phoneAuthProvider).otp}");
-                                            ref
-                                                .read(
-                                                    phoneAuthProvider.notifier)
-                                                .signInWithPhoneNumber(
-                                                    ref
-                                                        .read(phoneAuthProvider)
-                                                        .otp!,
-                                                    context,
-                                                    ref,
-                                                    _edtxtNum.text.trim(),
-                                                    false,
-                                                    password: _edtxtpassword
-                                                        .text
-                                                        .trim(),
-                                                    email:
-                                                        _edtxtMail.text.trim(),
-                                                    username:
-                                                        _edtxtName.text.trim());
-                                          }
-                                        },
-                                  FontSize: 20,
-                                  radius: 8,
-                                  width: double.infinity,
-                                  buttonName: "Register",
-                                  isLoading: loader,
-                                );
-                              },
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            )
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );
