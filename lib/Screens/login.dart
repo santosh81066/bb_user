@@ -10,26 +10,26 @@ import '../Widgets/heading.dart';
 import '../Widgets/text.dart';
 import '../Widgets/textfield.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+ ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   // Function to check if a string is a valid email
-  bool isValidEmail(String value) {
-    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-    return emailRegex.hasMatch(value);
-  }
+  // bool isValidEmail(String value) {
+  //   final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+  //   return emailRegex.hasMatch(value);
+  // }
 
   // Function to validate password
-  bool isValidPassword(String value) {
-    // Example: Minimum 8 characters, at least 1 letter, 1 number
-    final passwordRegex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}\$');
-    return passwordRegex.hasMatch(value);
-  }
+  // bool isValidPassword(String value) {
+  //   // Example: Minimum 8 characters, at least 1 letter, 1 number
+  //   final passwordRegex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}\$');
+  //   return passwordRegex.hasMatch(value);
+  // }
 
   final _validationkey = GlobalKey<FormState>();
   final TextEditingController _edtxtNum = TextEditingController();
@@ -66,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Consumer(
                         builder: (BuildContext context, WidgetRef ref,
                             Widget? child) {
-                          var loader = ref.watch(
+                          var isLoading = ref.watch(
                               loadingProvider2); // to set circular progress bar
                           return Column(
                             mainAxisSize: MainAxisSize.min,
@@ -79,13 +79,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 suffixIcon: const Icon(Icons.person),
                                 radius: 8.0,
                                 width: 10,
-                                validator: (_edtxtNum) {
-                                  if (_edtxtNum == null || _edtxtNum.isEmpty) {
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
                                     return 'Please enter your email address';
                                   }
-                                  if (!isValidEmail(_edtxtNum)) {
-                                    return 'Please enter a valid email address';
-                                  }
+                                  // if (!isValidEmail(_edtxtNum)) {
+                                  //   return 'Please enter a valid email address';
+                                  // }
                                   return null;
                                 },
                               ),
@@ -99,26 +99,31 @@ class _LoginScreenState extends State<LoginScreen> {
                                 suffixIcon: const Icon(Icons.lock),
                                 radius: 8.0,
                                 width: 10,
-                                validator: (_edtxtpwd) {
-                                  if (_edtxtpwd == null || _edtxtpwd.isEmpty) {
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
                                     return 'Please enter your password';
                                   }
-                                  if (!isValidPassword(_edtxtpwd)) {
-                                    return 'Password must be at least 8 characters long and include at least one letter and one number';
-                                  }
+                                  // if (!isValidPassword(_edtxtpwd)) {
+                                  //   return 'Password must be at least 8 characters long and include at least one letter and one number';
+                                  // }
                                   return null;
                                 },
                               ),
                               const SizedBox(
                                 height: 20,
                               ),
-                              SizedBox(
-                                height: 50,
-                                width: double.infinity,
+                              Consumer(builder: (context, ref, child) {
+                          final login = ref.watch(authprovider.notifier);
+                          final isLoading = ref.watch(loadingProvider);
+                               return SizedBox(
+                                 height: 50,
+                                 width: double.infinity,
                                 child: CoustEvalButton(
-                                  onPressed: loader == true
+                                  onPressed: isLoading 
                                       ? null
-                                      : () {
+                                      : () async {
+                                       final  authState = ref.watch(authprovider); // Accessing the AuthNotifier
+
                                           if (_validationkey.currentState!
                                               .validate()) {
                                             ref.read(authprovider.notifier).loginmail(
@@ -126,14 +131,37 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 _edtxtNum.text.trim(),
                                                 _edtxtpwd.text.trim(),
                                                 ref);
+                                      // //          if (result.statusCode == 401) {
+                                      // //   // Show error dialog for unauthorized access
+                                      // //   showDialog(
+                                      // //     context: context,
+                                      // //     builder: (context) => AlertDialog(
+                                      // //       title: const Text('Login Error'),
+                                      // //       content: Text(result.errorMessage ??
+                                      // //           'An unknown error occurred.'), // Default message
+                                      // //       actions: [
+                                      // //         TextButton(
+                                      // //           onPressed: () => Navigator.of(context).pop(),
+                                      // //           child: const Text('OK'),
+                                      // //         ),
+                                      // //       ],
+                                      // //     ),
+                                        
+                                      // //   );
+                                      // // }  
+                                      // // else{
+                                      // //   Navigator.of(context).pushNamed('/welcome'); // Navigate to the welcome page
+                                      // // } 
                                           }
                                         },
-                                  isLoading: loader,
+                                  isLoading: isLoading,
                                   buttonName: "Login",
                                   width: double.infinity,
                                   radius: 8,
                                   FontSize: 20,
                                 ),
+                              ); 
+                              },
                               ),
                               const SizedBox(
                                 height: 30,

@@ -182,7 +182,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     LatLng latLng = PropertyLocationConverter
                                         .parseLocationString(
                                             '${property.location}');
-                                    String imageurl = '${Bbapi.baseUrl2}' +
+                                    String imageurl = '${Bbapi.baseUrl}' +
                                         '${property.propertyPic}';
                                     return Padding(
                                       padding: const EdgeInsets.all(10.0),
@@ -228,7 +228,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               PropertyLocationConverter.parseLocationString(
                                   '${property.location}');
                           String imageurl =
-                              '${Bbapi.baseUrl2}' + '${property.propertyPic}';
+                              '${Bbapi.baseUrl}' + '${property.propertyPic}';
                           return Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -300,7 +300,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 LatLng latLng = PropertyLocationConverter
                                     .parseLocationString(
                                         '${property.location}');
-                                String imageurl = '${Bbapi.baseUrl2}' +
+                                String imageurl = '${Bbapi.baseUrl}' +
                                     '${property.propertyPic}';
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(

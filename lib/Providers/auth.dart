@@ -15,25 +15,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(AuthState());
   Future<bool> tryAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
+  
     if (!prefs.containsKey('userData')) {
       print('trylogin is false');
       return false;
     }
 
-    final extractData =
-        json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+     final String? userDataString = prefs.getString('userData');
+  if (userDataString == null) {
+    return false;
+  }
+
+    final Map<String, dynamic> extractData = json.decode(userDataString);
     if (state.token == null) {
       state = state.copyWith(
-        username: extractData['username'],
-        mobileno: extractData['mobileno'],
-        email: extractData['email'],
-        usertype: extractData['usertype'],
-        token: extractData['token'],
-      );
+      //   username: extractData['username'],
+      //   mobileno: extractData['mobileno'],
+      //   email: extractData['email'],
+      //   usertype: extractData['usertype'],
+      //   token: extractData['token'],
+      //   userStatus: extractData['userStatus']
+      
+       );
     }
 
     print('access token:${state.token}');
-    return true;
+    return false;
   }
 
   Future<void> registerUser(BuildContext context, String? username,
@@ -343,9 +350,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> loginmail(BuildContext context, String? username,
       String? password, WidgetRef ref) async {
     const url = Bbapi.login_mail;
-    //print("Otp check${otp}");
+    print("entered login function $password");
     final prefs = await SharedPreferences.getInstance();
-    String? verificationId = prefs.getString('verificationid');
     final loadingState = ref.read(loadingProvider2.notifier);
     loadingState.state = true;
 
@@ -355,12 +361,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
               'application/json', // Set the content type to application/json
         },
         body: json.encode({
-          "username": username!,
+          "email": username!,
           "password": password!,
         }));
 
     var userDetails = json.decode(response.body);
-    print('booking response:$userDetails');
+    print('login response:$userDetails');
     switch (response.statusCode) {
       case 200:
         loadingState.state = false;
@@ -380,7 +386,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         });
         await prefs.setString('userData', userData);
         print('pushNamed //');
-        //Navigator.of(context).pushNamed('/');  // Go to home by watch data in loginpage
+        Navigator.of(context).pushNamed('/welcome');  // Go to home by watch data in loginpage
         break;
       case 400:
         loadingState.state = false;
@@ -447,3 +453,13 @@ String cleanErrorMessage(String errorMessage) {
 final authprovider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
+
+// model class to represent the login result
+class LoginResult {
+  final int statusCode;
+  final String? errorMessage;
+  final Map<String, dynamic>? responseBody;
+  
+
+  LoginResult(this.statusCode, {this.errorMessage,this.responseBody});
+}
