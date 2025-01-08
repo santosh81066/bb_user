@@ -78,7 +78,7 @@ class _VenuDetailsScreenState extends ConsumerState<VenuDetailsScreen> {
                   LatLng latLng = PropertyLocationConverter.parseLocationString(
                       '${property.location!}');
                   String imageurl =
-                      '${Bbapi.baseUrl2}' + '${property.propertyPic!}';
+                      '${Bbapi.baseUrl}' + '${property.propertyPic!}';
                   print("Url: $imageurl");
                   return Column(
                     children: [

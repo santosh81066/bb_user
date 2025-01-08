@@ -95,7 +95,7 @@ class _VenuscreenState extends ConsumerState<Venuscreen> {
                             PropertyLocationConverter.parseLocationString(
                                 '${property.location}');
                         String imageurl =
-                            '${Bbapi.baseUrl2}' + '${property.propertyPic}';
+                            '${Bbapi.baseUrl}' + '${property.propertyPic}';
                         return Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8.0, vertical: 4.0),

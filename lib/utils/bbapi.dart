@@ -1,7 +1,7 @@
 
 class Bbapi{
-  static const String baseUrl  = "http://93.127.172.164:8080/api";
-  static const String baseUrl2  = "http://93.127.172.164:8080";
+  static const String baseUrl  = "http://www.gocodedesigners.com";
+  
   
   static const String register = "$baseUrl/register/";
   static const String registration = "$baseUrl/bbusereg";
@@ -15,4 +15,9 @@ class Bbapi{
   static const String booked_dates = "$baseUrl/booked_dates/";
   static const String book_property = "$baseUrl/book_property/"; 
   
+  static String get getUsers => '$baseUrl/users'; // List users
+  static String get updateUser => '$baseUrl/users/update'; // Update user
+  static String get deleteUser => '$baseUrl/users/delete'; // Delete user
+  
+ 
 }
