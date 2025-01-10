@@ -56,9 +56,26 @@ class MyApp extends ConsumerWidget {
           //Loginpage
           return Consumer(
             builder: (context, ref, child) {
-              ref.watch(authprovider);
-              // Check if the user is authenticated and profile is complete
-
+            final authState =  ref.watch(authprovider);
+        if(authState.token!=null){
+return CoustNavigation();
+        }
+                // Check if the user is authenticated and profile is complete
+            //  if(authState.userStatus == true){
+            //                         showDialog(
+            //                               context: context,
+            //                               builder: (context) => AlertDialog(
+            //                                 title: const Text('userstatus'),
+            //                                 content: Text(" userStatus is true "), // Default message
+            //                                 actions: [
+            //                                   TextButton(
+            //                                     onPressed: () => Navigator.of(context).pop(),
+            //                                     child: const Text('OK'),
+            //                                   ),
+            //                                 ],
+            //                               ),
+            //                             );
+            //  }
               // If the user is not authenticated, attempt auto-login
               return FutureBuilder(
                 future: ref.watch(authprovider.notifier).tryAutoLogin(),
@@ -70,7 +87,7 @@ class MyApp extends ConsumerWidget {
                             CircularProgressIndicator()); // Show SplashScreen while waiting
                   } else {
                     // Based on auto-login result, navigate to appropriate screen
-                    return snapshot.data == true
+                    return snapshot.data == true  && authState.userStatus == true
                         ? CoustNavigation() //Welcome page
                         : LoginScreen(); //Login page
                   }

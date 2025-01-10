@@ -1,11 +1,14 @@
+import 'dart:convert';
+
 class AuthState {
-  late final String? profilePic;
-  late final String? username;
-  late final String? email;
-  late final String? mobileno;
-  late final String? gender;
-  late final String? token;
-  late final String? usertype;
+    String? profilePic;
+    String? username;
+    String? email;
+    String? mobileno;
+    String? gender;
+    String? token;
+    String? usertype;
+    bool? userStatus;
 
   AuthState({
     this.profilePic,
@@ -15,16 +18,19 @@ class AuthState {
     this.gender,
     this.token,
     this.usertype,
+    this.userStatus,
   });
 
-  AuthState.fromJson(Map<String, dynamic> json)
-    : profilePic = json['profile_pic'] as String?,
-      username = json['username'] as String?,
-      email = json['email'] as String?,
-      mobileno = json['mobileno'] as String?,
-      gender = json['gender'] as String?,
-      token = json['token'] as String?,
+  AuthState.fromJson(Map<String, dynamic> json) {
+     profilePic = json['profile_pic'] as String?;
+      username = json['username'] as String?;
+      email = json['email'] as String?;
+      mobileno = json['mobileno'] as String?;
+      gender = json['gender'] as String?;
+      token = json['token'] as String?;
       usertype = json['usertype'] as String?;
+      userStatus = json['userstatus'] as bool?;}
+      
 
   Map<String, dynamic> toJson() => {
     'profile_pic': profilePic,
@@ -44,6 +50,7 @@ class AuthState {
     String? gender,
     String? token,
     String? usertype,
+    bool?userStatus,
   }) {
     return AuthState(
       profilePic: profilePic ?? this.profilePic,
@@ -53,6 +60,7 @@ class AuthState {
       gender: gender ?? this.gender,
       token: token ?? this.token,
       usertype: usertype ?? this.usertype,
+      userStatus: userStatus?? this.userStatus,
     );
   }
 AuthState clear() {
@@ -64,6 +72,7 @@ AuthState clear() {
       gender: null,
       token: null,
       usertype: null,
+      userStatus: null,
     );
   }
 }
