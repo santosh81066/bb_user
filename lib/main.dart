@@ -57,8 +57,8 @@ class MyApp extends ConsumerWidget {
           return Consumer(
             builder: (context, ref, child) {
             final authState =  ref.watch(authprovider);
-        if(authState.token!=null){
-return CoustNavigation();
+           if(authState.token!=null){
+               return CoustNavigation();
         }
                 // Check if the user is authenticated and profile is complete
             //  if(authState.userStatus == true){
@@ -87,7 +87,8 @@ return CoustNavigation();
                             CircularProgressIndicator()); // Show SplashScreen while waiting
                   } else {
                     // Based on auto-login result, navigate to appropriate screen
-                    return snapshot.data == true  && authState.userStatus == true
+                    return snapshot.data == true 
+                    // && authState.userStatus == true
                         ? CoustNavigation() //Welcome page
                         : LoginScreen(); //Login page
                   }

@@ -10,6 +10,7 @@ class Propertystate {
   final String? city;
   final String? pincode;
   final String? activationStatus;
+  final String? imageUrl;
 
   Propertystate({
     this.id,
@@ -23,6 +24,7 @@ class Propertystate {
     this.city,
     this.pincode,
     this.activationStatus,
+    this.imageUrl,
   });
 
   Propertystate.fromJson(Map<String, dynamic> json)
@@ -36,7 +38,8 @@ class Propertystate {
         state = json['state'] as String?,
         city = json['city'] as String?,
         pincode = json['pincode'] as String?,
-        activationStatus = json['activation_status'] as String?;
+        activationStatus = json['activation_status'] as String?,
+        imageUrl = json['imageUrl']as String?;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -50,6 +53,7 @@ class Propertystate {
         'city': city,
         'pincode': pincode,
         'activation_status': activationStatus,
+        'imageUrl' : imageUrl,
       };
 
   Propertystate copyWith({
@@ -64,6 +68,7 @@ class Propertystate {
     String? city,
     String? pincode,
     String? activationStatus,
+    String? imageUrl,
   }) {
     return Propertystate(
       id: id ?? this.id,
@@ -77,6 +82,7 @@ class Propertystate {
       city: city ?? this.city,
       pincode: pincode ?? this.pincode,
       activationStatus: activationStatus ?? this.activationStatus,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 
@@ -93,6 +99,7 @@ class Propertystate {
       city: null,
       pincode: null,
       activationStatus: null,
+      imageUrl: null,
     );
   }
 }

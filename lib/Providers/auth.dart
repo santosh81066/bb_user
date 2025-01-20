@@ -15,20 +15,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(AuthState());
   Future<bool> tryAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
-  
-    if (!prefs.containsKey('userData')) {
-      print('trylogin is false');
-      return false;
-    }
 
-     final String? userDataString = prefs.getString('userData');
-  if (userDataString == null) {
-    return false;
+     final userDataString = prefs.getString('userData');
+  if (userDataString != null && userDataString.isNotEmpty) {
+    return false ;
   }
 
-    final Map<String, dynamic> extractData = json.decode(userDataString);
+  if (!prefs.containsKey('userData')) {
+    //   print('trylogin is false');
+    //   return false;
+     
+
+     final extractData =
+          json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+
     if (state.token == null) {
-      state = state.copyWith(
+       state = AuthState.fromJson(extractData);
+    }
+    return true ;
+      //state = state.copyWith(
       //   username: extractData['username'],
       //   mobileno: extractData['mobileno'],
       //   email: extractData['email'],
@@ -36,11 +41,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       //   token: extractData['token'],
       //   userStatus: extractData['userStatus']
       
-       );
+       //);
+    } else{
+      print('user not authenticated');
+      return false;
     }
 
-    print('access token:${state.token}');
-    return false;
+    // print('access token:${state.token}');
+    // return false;
   }
 
   Future<void> registerUser(BuildContext context, String? username,
@@ -455,11 +463,11 @@ final authprovider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 });
 
 // model class to represent the login result
-class LoginResult {
-  final int statusCode;
-  final String? errorMessage;
-  final Map<String, dynamic>? responseBody;
+// class LoginResult {
+//   final int statusCode;
+//   final String? errorMessage;
+//   final Map<String, dynamic>? responseBody;
   
 
-  LoginResult(this.statusCode, {this.errorMessage,this.responseBody});
-}
+//   LoginResult(this.statusCode, {this.errorMessage,this.responseBody});
+// }

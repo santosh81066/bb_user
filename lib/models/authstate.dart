@@ -8,7 +8,7 @@ class AuthState {
     String? gender;
     String? token;
     String? usertype;
-    bool? userStatus;
+    //bool? userStatus;
 
   AuthState({
     this.profilePic,
@@ -18,7 +18,7 @@ class AuthState {
     this.gender,
     this.token,
     this.usertype,
-    this.userStatus,
+    //this.userStatus,
   });
 
   AuthState.fromJson(Map<String, dynamic> json) {
@@ -29,7 +29,8 @@ class AuthState {
       gender = json['gender'] as String?;
       token = json['token'] as String?;
       usertype = json['usertype'] as String?;
-      userStatus = json['userstatus'] as bool?;}
+     // userStatus = json['userstatus'] as bool?;
+     }
       
 
   Map<String, dynamic> toJson() => {
@@ -60,7 +61,7 @@ class AuthState {
       gender: gender ?? this.gender,
       token: token ?? this.token,
       usertype: usertype ?? this.usertype,
-      userStatus: userStatus?? this.userStatus,
+      //userStatus: userStatus?? this.userStatus,
     );
   }
 AuthState clear() {
@@ -72,7 +73,7 @@ AuthState clear() {
       gender: null,
       token: null,
       usertype: null,
-      userStatus: null,
+     // userStatus: null,
     );
   }
 }

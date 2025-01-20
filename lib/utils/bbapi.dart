@@ -13,5 +13,5 @@ class Bbapi{
   static const String get_review = "$baseUrl/get_reviews/";
   static const String booked_dates = "$baseUrl/booked_dates/";
   static const String book_property = "$baseUrl/book_property/"; 
-  
+ 
 }
