@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../Providers/phoneauthnotifier.dart';
+// import '../Providers/phoneauthnotifier.dart';
 import '../Widgets/evaluatedbutton.dart';
 import '../Widgets/heading.dart';
 import '../Widgets/textfield.dart';
+import 'dart:io';
+
 import 'package:bb_user/Colors/coustcolors.dart';
 import 'package:bb_user/Providers/registrationnotifier.dart';
 import 'package:bb_user/models/registrationstatemodel.dart';
-
+import 'package:image_picker/image_picker.dart';
+import 'package:bb_user/Widgets/text.dart';
 // Step 1: Define the StateNotifierProvider
 final registrationProvider = StateNotifierProvider<RegistrationNotifier, RegistrationState>((ref) {
   return RegistrationNotifier();
@@ -26,6 +29,11 @@ final TextEditingController _edtxtName = TextEditingController();
 final TextEditingController _edtxtPassword = TextEditingController();
 final TextEditingController _edtxtConfirmPassword = TextEditingController();
 final TextEditingController _edtxtNum = TextEditingController();
+  
+
+  final _validationKey = GlobalKey<FormState>();
+  final ImagePicker _picker = ImagePicker();
+   File? _profileImage;
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final _validationKey = GlobalKey<FormState>();
@@ -33,9 +41,109 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   // Password validation function
   bool isValidPassword(String value) {
-    final RegExp passwordRegex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$');
+    final RegExp passwordRegex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$'
+
+);
     return passwordRegex.hasMatch(value);
   }
+
+
+Future<void> _pickImage(BuildContext context, ImageSource source) async {
+  try {
+    final pickedFile = await _picker.pickImage(source: source);
+    if (pickedFile != null) {
+      File imageFile = File(pickedFile.path);
+
+      // Check the file size (maximum 2MB)
+      final fileSizeInBytes = await imageFile.length();
+      final maxFileSize = 2 * 1024 * 1024; // 2MB in bytes
+
+      if (fileSizeInBytes > maxFileSize) {
+        // File size is too large, show an error
+        _showAlertDialog('Error', 'File size exceeds 2MB. Please select a smaller file.');
+      } else {
+        // Valid image size, proceed
+        setState(() {
+          _profileImage = imageFile;
+        });
+      }
+    }
+  } catch (e) {
+    _showAlertDialog('Error', 'Failed to pick image: $e');
+  }
+}
+
+
+ void _showAlertDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              
+              if (title == 'Error') {
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+ Widget _buildImageUploadSection(String label) {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: InkWell(
+        onTap: () => _pickImage(context, ImageSource.gallery),
+        child: Container(
+          width: double.infinity,
+          height: 150,
+          decoration: BoxDecoration(
+            color: CoustColors.colrButton1,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Center(
+            child: _profileImage != null
+                ? Image.file(
+                    _profileImage!,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  )
+                : const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.camera_alt, size: 40, color: Colors.white),
+                      SizedBox(height: 6),
+                      coustText(
+                        sName: "Upload Profile Image",
+                        color: Colors.white,
+
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
+
+  
+
+
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +179,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              _buildImageUploadSection("Profile Image"),
                               CoustTextfield(
                                 isVisible: false,
                                 controller: _edtxtMail,
@@ -89,7 +198,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 2),
                               CoustTextfield(
                                 isVisible: false,
                                 controller: _edtxtName,
@@ -104,11 +213,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 2),
                               
                               // Password field: Remove the null check
-                              CoustTextfield(
-                                isVisible: !_isPasswordVisible,
+                               CoustTextfield(
+                                isVisible: false,
                                 controller: _edtxtPassword,
                                 password: true,
                                 hint: "Password",
@@ -129,14 +238,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   if (!isValidPassword(value ?? "")) {
                                     return 'Password must contain at least 8 characters, a letter, and a number';
                                   }
-                                  // return null;
+                                  return null;
                                 },
                               ),
-                              const SizedBox(height: 10),
+
+                              const SizedBox(height: 2),
                               
                               // Confirm password field: Remove the null check
                               CoustTextfield(
-                                isVisible: !_isPasswordVisible,
+                                isVisible: false,
                                 controller: _edtxtConfirmPassword,
                                 password: true,
                                 hint: "Confirm Password",
@@ -150,7 +260,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 },
                               ),
                               
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 6),
                               
                               CoustTextfield(
                                 isVisible: false,
@@ -168,7 +278,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 6),
                               
                               // Step 2: Using Consumer widget to access the state and interact with RegistrationNotifier
                               Consumer(
@@ -190,6 +300,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                           _edtxtMail.text.trim(),
                                           _edtxtPassword.text.trim(),
                                           _edtxtNum.text.trim(),
+                                          _profileImage,
+                                         
+                                           
                                         );
                                       }
                                     },

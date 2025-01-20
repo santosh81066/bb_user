@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -8,6 +9,11 @@ import 'package:bb_user/utils/bbapi.dart';  // Assuming you have this utility fo
 // Step 1: Define the RegistrationNotifier class
 class RegistrationNotifier extends StateNotifier<RegistrationState> {
   RegistrationNotifier() : super(RegistrationState.initial());
+     void setProfileImage(File image) {
+    state = state.copyWith(profileImage: image);
+  }
+  
+
 
   // Step 2: Define the register method
   Future<void> register(
@@ -16,12 +22,25 @@ class RegistrationNotifier extends StateNotifier<RegistrationState> {
     String? email,
     String? password,
     String? phoneNumber,
+    File? profileImage,
   ) async {
     Uri url = Uri.parse(Bbapi.registration);  // Ensure this is the correct URL for your API
     print("Registration Data: $name, $email, $password, $phoneNumber");
 
     try {
       final request = http.MultipartRequest('POST', url);
+        
+          if (profileImage != null) {
+                 print("Uploading profile image: ${profileImage.path}");
+                request.files.add(
+                 await http.MultipartFile.fromPath(
+                  'profilepic',
+                     profileImage.path,
+                    ),
+                   );
+                   } else {
+                    print("No profile image selected");
+                  }
 
       // Prepare data for registration
       final data = {
@@ -29,7 +48,7 @@ class RegistrationNotifier extends StateNotifier<RegistrationState> {
         "mobileno": phoneNumber ?? '',
         "email": email ?? '',
         "password": password ?? '', // Add password to the request
-        "role": "v",
+        "role": "u",
         "userstatus": "1",
       };
 

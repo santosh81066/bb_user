@@ -1,6 +1,4 @@
-
-class Bbapi{
-  
+class Bbapi {
   static const String baseUrl = "http://www.gocodedesigners.com";
   static const String register = "$baseUrl/register/";
   static const String registration = "$baseUrl/bbusereg";
@@ -12,6 +10,9 @@ class Bbapi{
   static const String post_review = "$baseUrl/post_review/";
   static const String get_review = "$baseUrl/get_reviews/";
   static const String booked_dates = "$baseUrl/booked_dates/";
-  static const String book_property = "$baseUrl/book_property/"; 
- 
+  static const String book_property = "$baseUrl/book_property/";
+
+  static String get getUsers => '$baseUrl/users'; // List users
+  static String get updateUser => '$baseUrl/users/update'; // Update user
+  static String get deleteUser => '$baseUrl/users/delete'; // Delete user
 }
