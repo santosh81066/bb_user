@@ -45,10 +45,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 32.0),
+            padding: const EdgeInsets.only(top: 0.0),
             child: Container(
               width: double.infinity,
-              height: 90,
+              height: 130,
               decoration: const BoxDecoration(
                   color: Color(0xFF6418C3),
                   shape: BoxShape.rectangle,

@@ -38,12 +38,12 @@ class _VenuscreenState extends ConsumerState<Venuscreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 32.0),
+            padding: const EdgeInsets.only(top: 0.0),
             child: Column(
               children: [
                 Container(
                   width: double.infinity,
-                  height: 90,
+                  height: 130,
                   // ignore: unnecessary_const
                   decoration: const BoxDecoration(
                       color: Color(0xFF6418C3),
@@ -52,7 +52,7 @@ class _VenuscreenState extends ConsumerState<Venuscreen> {
                           bottomEnd: Radius.circular(25),
                           bottomStart: Radius.circular(25))),
                   child: const Padding(
-                    padding: EdgeInsets.only(top: 20.0, left: 15),
+                    padding: EdgeInsets.only(top: 30.0, left: 15),
                     child: Text("Venues",
                         style: TextStyle(
                             color: CoustColors.colrEdtxt4, fontSize: 20)),
