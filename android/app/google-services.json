@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:974168106274:android:4c30682dc5ff7e0e90f17b",
         "android_client_info": {
-          "package_name": "com.example.assignmet_1"
+          "package_name": "com.bbuser"
         }
       },
       "oauth_client": [],
@@ -28,7 +28,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:974168106274:android:3c305024ef63aa5690f17b",
         "android_client_info": {
-          "package_name": "com.example.banquetbookz_vendor"
+          "package_name": "com.bbuser.banquetbookz_vendor"
         }
       },
       "oauth_client": [],

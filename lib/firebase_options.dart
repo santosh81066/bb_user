@@ -64,7 +64,7 @@
 //     messagingSenderId: '974168106274',
 //     projectId: 'banquetbookz-4bde9',
 //     storageBucket: 'banquetbookz-4bde9.appspot.com',
-//     iosBundleId: 'com.example.assignmet1',
+//     iosBundleId: 'com.bbuser',
 //   );
 
 //   static const FirebaseOptions macos = FirebaseOptions(
@@ -73,7 +73,7 @@
 //     messagingSenderId: '913696249326',
 //     projectId: 'banquetbookzvendor',
 //     storageBucket: 'banquetbookzvendor.appspot.com',
-//     iosBundleId: 'com.example.assignmet1',
+//     iosBundleId: 'com.bbuser',
 //   );
 
 //   static const FirebaseOptions windows = FirebaseOptions(

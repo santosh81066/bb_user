@@ -1,5 +1,5 @@
 class Bbapi {
-  static const String baseUrl = "http://www.gocodedesigners.com";
+  static const String baseUrl = "https://www.gocodedesigners.com";
   static const String register = "$baseUrl/register/";
   static const String registration = "$baseUrl/bbusereg";
   static const String update_user = "$baseUrl/update_user/";

@@ -20,12 +20,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _edtxtNum = TextEditingController();
   final TextEditingController _edtxtpwd = TextEditingController();
 
-  // @override
-  // void dispose() {
-  //   _edtxtNum.dispose();
-  //   _edtxtpwd.dispose();
-  //   super.dispose();
-  // }
+  @override
+  void dispose() {
+    _edtxtNum.dispose();
+    _edtxtpwd.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
