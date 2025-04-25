@@ -31,21 +31,26 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
       // Debug prints to verify auth state
       print("Auth state: ${authState.toJson()}");
 
-      // // Check if auth data exists
-      // if (authState.data == null) {
-      //   print("Auth data is null!");
-      //   throw Exception("User not logged in. Authentication data is missing.");
-      // }
-      //
-      // // Get user ID and print for debugging
-      // final userId = authState.data!.userId;
-      // print("Retrieved userId: $userId");
-      //
-      // if (userId == null || userId == 0) {
-      //   print("User ID is null or zero!");
-      //   throw Exception("User ID is missing or invalid.");
-      // }
-      final int userId = 43;
+      // Try to auto-login if no userId is found
+      int? userId = authState.userId;
+      if (userId == null) {
+        // Attempt to refresh auth state with auto-login
+        print("User ID is null, attempting to auto-login");
+        final authNotifier = ref.read(authprovider.notifier);
+        final autoLoginSuccess = await authNotifier.tryAutoLogin();
+        print("Auto-login success: $autoLoginSuccess");
+
+        // Get the updated auth state
+        final updatedAuthState = ref.read(authprovider);
+        userId = updatedAuthState.userId;
+        print("Updated auth state userId: $userId");
+      }
+
+      // Check if userId exists after auto-login attempt
+      if (userId == null) {
+        throw Exception('User ID not found. Please log in again.');
+      }
+
       // Create booking request
       final booking = HallBookingRequest(
         hallId: hallId,
@@ -58,11 +63,20 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
       // Print the request for debugging
       print("Booking request: ${booking.toJson()}");
 
+      // Get token for authorization header
+      final token = authState.token;
+      final Map<String, String> headers = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization token if available
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
       final response = await http.post(
         Uri.parse('https://www.gocodedesigners.com/hallbooking'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: jsonEncode(booking.toJson()),
       );
 
@@ -78,8 +92,9 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
         try {
           final responseData = jsonDecode(response.body);
           final messages = responseData['messages'];
-          throw Exception(
-              messages is List ? messages.join(', ') : 'Booking failed');
+          throw Exception(messages is List
+              ? messages.join(', ')
+              : (messages ?? 'Booking failed'));
         } catch (decodeError) {
           throw Exception(
               'Booking failed with status code ${response.statusCode}');

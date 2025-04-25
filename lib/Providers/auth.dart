@@ -1,11 +1,8 @@
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../models/authstate.dart';
 import '../utils/bbapi.dart';
 import 'loaded.dart';
@@ -13,43 +10,62 @@ import 'phoneauthnotifier.dart';
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(AuthState());
+
   Future<bool> tryAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
 
-     final userDataString = prefs.getString('userData');
-  if (userDataString != null && userDataString.isNotEmpty) {
-    return false ;
-  }
-
-  if (!prefs.containsKey('userData')) {
-    //   print('trylogin is false');
-    //   return false;
-     
-
-     final extractData =
-          json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
-
-    if (state.token == null) {
-       state = AuthState.fromJson(extractData);
-    }
-    return true ;
-      //state = state.copyWith(
-      //   username: extractData['username'],
-      //   mobileno: extractData['mobileno'],
-      //   email: extractData['email'],
-      //   usertype: extractData['usertype'],
-      //   token: extractData['token'],
-      //   userStatus: extractData['userStatus']
-      
-       //);
-    } else{
-      print('user not authenticated');
+    if (!prefs.containsKey('userData')) {
+      print('No userData found in SharedPreferences');
       return false;
     }
 
-    // print('access token:${state.token}');
-    // return false;
+    final userDataString = prefs.getString('userData');
+    if (userDataString == null || userDataString.isEmpty) {
+      print('userData is empty in SharedPreferences');
+      return false;
+    }
+
+    try {
+      final extractData = json.decode(userDataString) as Map<String, dynamic>;
+      print('Retrieved userData: $extractData'); // Debugging print
+
+      // Update the state with the retrieved data
+      state = AuthState.fromJson(extractData);
+
+      // Verify state was updated
+      print(
+          'State after update - token: ${state.token}, userId: ${state.userId}');
+
+      return true;
+    } catch (e) {
+      print('Error during auto login: $e');
+      return false;
+    }
   }
+  // Future<bool> tryAutoLogin() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //
+  //   final userDataString = prefs.getString('userData');
+  //   if (userDataString != null && userDataString.isNotEmpty) {
+  //     return false;
+  //   }
+  //
+  //   if (!prefs.containsKey('userData')) {
+  //     //   print('trylogin is false');
+  //     //   return false;
+  //
+  //     final extractData =
+  //         json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+  //
+  //     if (state.token == null) {
+  //       state = AuthState.fromJson(extractData);
+  //     }
+  //     return true;
+  //   } else {
+  //     print('user not authenticated');
+  //     return false;
+  //   }
+  // }
 
   Future<void> registerUser(BuildContext context, String? username,
       String? email, String? phonenum, String? password, WidgetRef ref) async {
@@ -66,7 +82,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         body: json.encode({
           "username": username!,
           "email": email!,
-          "mobileno": phonenum!,
+          "mobile_no": phonenum!,
           "password": password!
         }));
     print("username: $username!");
@@ -132,7 +148,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'Content-Type':
               'application/json', // Set the content type to application/json
         },
-        body: json.encode({"mobileno": phonenum}));
+        body: json.encode({"mobile_no": phonenum}));
     print("username: $phonenum");
     var userDetails = json.decode(response.body);
     print('booking response:$userDetails');
@@ -190,7 +206,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'Content-Type':
               'application/json', // Set the content type to application/json
         },
-        body: json.encode({"token": token}));
+        body: json.encode({"access_token": token}));
     print("verificationId: $verificationId");
     var userDetails = json.decode(response.body);
     print('booking response:$userDetails');
@@ -198,22 +214,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
       case 200:
         loadingState.state = false;
         print('success');
+        // Extract data from the 'data' key
+        final userDataFromServer = userDetails['data'];
         state = state.copyWith(
-            token: userDetails["token"],
-            username: userDetails["username"],
-            email: userDetails["email"],
-            mobileno: userDetails["mobileno"],
-            usertype: userDetails["usertype"]);
+            userId: userDataFromServer["user_id"], // From 'data'
+            token: userDataFromServer["access_token"],
+            username: userDataFromServer["username"],
+            email: userDataFromServer["email"],
+            mobileno: userDataFromServer["mobile_no"],
+            usertype: userDataFromServer["user_role"]);
+
         final userData = json.encode({
-          'token': state.token,
+          'user_id': state.userId,
+          'access_token': state.token,
           'username': state.username,
           'email': state.email,
-          'mobileno': state.mobileno,
-          'usertype': state.usertype,
+          'mobile_no': state.mobileno,
+          'user_role': state.usertype,
         });
         await prefs.setString('userData', userData);
         print('pushNamed //');
-        //Navigator.of(context).pushNamed('/');  // Go to home by watch data in loginpage
         break;
       case 400:
         loadingState.state = false;
@@ -269,8 +289,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
     final extractData =
         json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
-    String token = extractData['token'];
-    String usertype = extractData['usertype'];
+    String token = extractData['access_token'];
+    String usertype = extractData['user_role'];
     final loadingState = ref.read(loadingProvider2.notifier);
     loadingState.state = true;
     var response = await http.put(Uri.parse(url),
@@ -282,7 +302,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         body: json.encode({
           "username": username!,
           "email": email!,
-          "mobileno": phonenum!,
+          "mobile_no": phonenum!,
         }));
     print("username: $username!");
     var userDetails = json.decode(response.body);
@@ -314,14 +334,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
             token: token,
             username: userDetails["username"],
             email: userDetails["email"],
-            mobileno: userDetails["mobileno"],
+            mobileno: userDetails["mobile_no"],
             usertype: usertype);
         final userData = json.encode({
-          'token': state.token,
+          'access_token': state.token,
           'username': state.username,
           'email': state.email,
-          'mobileno': state.mobileno,
-          'usertype': state.usertype,
+          'mobile_no': state.mobileno,
+          'user_role': state.usertype,
         });
         await prefs.setString('userData', userData);
         Navigator.of(context)
@@ -379,22 +399,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
       case 200:
         loadingState.state = false;
         print('success');
+        // Extract data from the 'data' key in the response
+        final userDataFromServer = userDetails['data'];
+        print(
+            "user_id type: ${userDetails["user_id"].runtimeType}, value: ${userDetails["user_id"]}");
         state = state.copyWith(
-            token: userDetails["token"],
-            username: userDetails["username"],
-            email: userDetails["email"],
-            mobileno: userDetails["mobileno"],
-            usertype: userDetails["usertype"]);
+          userId: userDataFromServer["user_id"] as int?, // Cast to int
+          token: userDataFromServer["access_token"] as String?,
+          username: userDataFromServer["username"] as String?,
+          email: userDataFromServer["email"] as String?,
+          mobileno: userDataFromServer["mobile_no"].toString(), // Force String
+          usertype: userDataFromServer["user_role"] as String?,
+        );
+
         final userData = json.encode({
-          'token': state.token,
+          'user_id': state.userId,
+          'access_token': state.token,
           'username': state.username,
           'email': state.email,
-          'mobileno': state.mobileno,
-          'usertype': state.usertype,
+          'mobile_no': state.mobileno,
+          'user_role': state.usertype,
         });
         await prefs.setString('userData', userData);
         print('pushNamed //');
-        Navigator.of(context).pushNamed('/welcome');  // Go to home by watch data in loginpage
+        Navigator.of(context).pushNamed('/welcome');
         break;
       case 400:
         loadingState.state = false;
@@ -461,13 +489,3 @@ String cleanErrorMessage(String errorMessage) {
 final authprovider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
-
-// model class to represent the login result
-// class LoginResult {
-//   final int statusCode;
-//   final String? errorMessage;
-//   final Map<String, dynamic>? responseBody;
-  
-
-//   LoginResult(this.statusCode, {this.errorMessage,this.responseBody});
-// }
