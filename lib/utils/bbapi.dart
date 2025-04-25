@@ -11,7 +11,8 @@ class Bbapi {
   static const String get_review = "$baseUrl/get_reviews/";
   static const String booked_dates = "$baseUrl/booked_dates/";
   static const String book_property = "$baseUrl/book_property/";
-
+  static const String addhall = "$baseUrl/bbaddhall";
+  static const String addproperty = "$baseUrl/bbaddproperty";
   static String get getUsers => '$baseUrl/users'; // List users
   static String get updateUser => '$baseUrl/users/update'; // Update user
   static String get deleteUser => '$baseUrl/users/delete'; // Delete user

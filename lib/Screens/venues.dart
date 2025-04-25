@@ -1,41 +1,32 @@
-import 'package:flutter/material.dart';
+import "package:flutter/material.dart";
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../Colors/coustcolors.dart';
-import '../Providers/property.dart';
-import '../models/venues_listmodel.dart';
-import '../utils/bbapi.dart';
-import 'venudetails.dart';
+import '../Providers/venues_provider.dart';
+import '../models/get_properties_model.dart';
 
-// ignore: must_be_immutable
 class Venuscreen extends ConsumerStatefulWidget {
   const Venuscreen({super.key});
 
   @override
-  ConsumerState<Venuscreen> createState() => _VenuscreenState();
+  ConsumerState<Venuscreen> createState() => _ManageCalendarScreenState();
 }
 
-class _VenuscreenState extends ConsumerState<Venuscreen> {
-  final List<VenuesListmodel> _items = [];
-
+class _ManageCalendarScreenState extends ConsumerState<Venuscreen> {
   @override
-  void initState() {
-    super.initState();
-
-    for (int i = 0; i < 1; i++) {
-      _items.add(VenuesListmodel("Swagath Grand", 'images/flutter.jpg', 3.5, 84,
-          'Bachupally, Hyderabad\nAug 25, 2023'));
-    }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    ref.read(propertyNotifierProvider.notifier).getproperty();
   }
 
   @override
   Widget build(BuildContext context) {
-    final propertyState = ref.watch(propertyprovider);
+    final propertyState = ref.watch(propertyNotifierProvider).data ?? [];
+
     return Scaffold(
-      backgroundColor: CoustColors.colrFill,
-      //bottomNavigationBar: CoustNavigation(nav_index: 1,),
+      backgroundColor: Colors.grey[200],
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 0.0),
@@ -81,116 +72,104 @@ class _VenuscreenState extends ConsumerState<Venuscreen> {
               ],
             ),
           ),
-          propertyState.when(
-              loading: () => Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(child: Text('Error: $error')),
-              data: (properties) {
-                return Expanded(
-                  child: ListView.builder(
-                      itemCount: properties.length,
+          Expanded(
+            child: Container(
+              child: propertyState.isNotEmpty
+                  ? ListView.builder(
+                      itemCount: propertyState.length,
                       itemBuilder: (context, index) {
-                        // final item = _items[index];
-                        final property = properties[index];
-                        LatLng latLng =
-                            PropertyLocationConverter.parseLocationString(
-                                '${property.location}');
-                        String imageurl =
-                            '${Bbapi.baseUrl}' + '${property.propertyPic}';
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 4.0),
-                          child: Card(
-                            elevation: 4.0,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                  top: 16.0, bottom: 16, right: 16, left: 25),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      Image.network(
-                                        imageurl,
-                                        height: 50,
-                                        width: 50,
-                                        fit: BoxFit.fill,
-                                      ),
-                                      SizedBox(width: 16),
-                                      Expanded(
-                                        child: Padding(
-                                          padding:
-                                              const EdgeInsets.only(left: 7.0),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "Swagath Grand banquet hall",
-                                                style: const TextStyle(
-                                                    fontSize: 24,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.black),
-                                              ),
-                                              Row(
-                                                children: [
-                                                  const Icon(Icons.star,
-                                                      color: Colors.amber,
-                                                      size: 16),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                      '${property.averageRating} (${property.reviewCount})',
-                                                      style: const TextStyle(
-                                                          fontStyle:
-                                                              FontStyle.italic,
-                                                          fontSize: 16,
-                                                          color: Colors.black)),
-                                                ],
-                                              ),
-                                              Text(
-                                                '${property.address1} ' +
-                                                    '${property.address2}\n'
-                                                        '${property.pincode}',
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  color:
-                                                      CoustColors.colrSubText,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: () async {
-                                        //Copywith
-                                        // Handle button press
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                VenuDetailsScreen(
-                                                    property: property),
-                                          ),
-                                        );
-                                        // Navigator.of(context).pushNamed('/venue_details');
-                                        //print('Button pressed for ${item.heading}         ${_items[index]}');
-                                      },
-                                      child: const Text('View Details'),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                        final property = propertyState[index];
+                        return Container(
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurple[50], // background color
+                            border: Border.all(
+                              color: Colors.deepPurple.shade200, // border color
+                              width: 1, // border width
                             ),
+                            borderRadius:
+                                BorderRadius.circular(12), // rounded corners
+                          ),
+                          child: PropertyCard(
+                            property: property,
+                            name: property.propertyName ?? 'No Name',
+                            location: property.address ?? 'No Address',
                           ),
                         );
-                      }),
-                );
-              }),
+                      },
+                    )
+                  : const Center(
+                      child: Text(
+                        'No properties available',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class PropertyCard extends StatelessWidget {
+  final Data property;
+
+  const PropertyCard(
+      {super.key,
+      required this.property,
+      required String name,
+      required String location});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        if (property.coverPic != null)
+          Center(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.deepPurple, // border color
+                  width: 2, // border width
+                ),
+                borderRadius:
+                    BorderRadius.circular(8), // optional: rounded corners
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  'https://www.gocodedesigners.com/banquetbookingz/${property.coverPic}',
+                  width: 300,
+                  height: 200,
+                  fit: BoxFit.fill,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Center(child: Text("Image not found")),
+                ),
+              ),
+            ),
+          ),
+        ListTile(
+          title: Text(
+            property.propertyName ?? 'No Name',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          subtitle: Text(
+            property.address ?? 'No Address',
+            style: const TextStyle(color: Colors.grey),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.of(context).pushNamed(
+              '/venue_details',
+              arguments: {'property': property},
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+      ],
     );
   }
 }
