@@ -63,7 +63,6 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
     return '$hour:$minute $period';
   }
 
-  // Modified isCurrentBooking method to be more reliable
   bool isCurrentBooking(GetHallBooking booking) {
     final today = DateTime.now();
 
