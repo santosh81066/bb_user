@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Providers/auth.dart';
 import '../Providers/loaded.dart';
+import '../Widgets/text.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -127,6 +128,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(
                             height: 20,
                           ),
+                          // ListTile(
+                          //   title: const coustText(sName: 'Display userid'),
+                          //   onTap: () {
+                          //     // Get the user ID from the auth provider
+                          //     final authState = ref.read(authprovider);
+                          //     final userId = authState.userId;
+                          //     // Show it in a snackbar
+                          //     ScaffoldMessenger.of(context).showSnackBar(
+                          //       SnackBar(
+                          //         content: Text(
+                          //             'Your user ID is: ${userId ?? 'Not available'}'),
+                          //         duration: const Duration(seconds: 3),
+                          //       ),
+                          //     );
+                          //   },
+                          // ),
                           TextButton(
                               onPressed: () {
                                 logout(context, ref);

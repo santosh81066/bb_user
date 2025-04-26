@@ -34,7 +34,7 @@ class _CoustNavigationState extends State<CoustNavigation> {
     botmnav_list.add(const BottomNavigationBarItem(
         icon: Icon(Icons.search), label: 'Search'));
     botmnav_list.add(const BottomNavigationBarItem(
-        icon: Icon(Icons.person_2_rounded), label: 'Manager'));
+        icon: Icon(Icons.person_2_rounded), label: 'Manage'));
     botmnav_list.add(const BottomNavigationBarItem(
         icon: Icon(Icons.settings), label: 'Settings'));
   }

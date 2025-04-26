@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../Colors/coustcolors.dart';
+import '../Providers/subscribed_provider.dart';
 import '../Providers/venues_provider.dart';
 import '../models/get_properties_model.dart';
 
@@ -17,12 +18,39 @@ class _ManageCalendarScreenState extends ConsumerState<Venuscreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     ref.read(propertyNotifierProvider.notifier).getproperty();
+    ref.read(subscriptionProvider.notifier).fetchSubscriptions();
   }
 
   @override
   Widget build(BuildContext context) {
     final propertyState = ref.watch(propertyNotifierProvider).data ?? [];
+    final subscriptions = ref.watch(subscriptionProvider);
 
+    // Get unique property IDs from subscriptions, sorted by start_time
+    final Set<int> uniquePropertyIds = {};
+    final sortedPropertyIds = <int>[];
+
+    for (var subscription in subscriptions) {
+      if (!uniquePropertyIds.contains(subscription.Id)) {
+        uniquePropertyIds.add(subscription.Id);
+        sortedPropertyIds.add(subscription.Id);
+      }
+    }
+
+    // Filter properties that match the IDs from subscriptions
+    final filteredProperties = propertyState.where((property) {
+      // Check if propertyId is not null and is contained in uniquePropertyIds
+      return property.propertyId != null &&
+          uniquePropertyIds.contains(
+              property.propertyId); // Assuming propertyId is now an int
+    }).toList();
+
+// And your sorting function:
+    filteredProperties.sort((a, b) {
+      final aIndex = sortedPropertyIds.indexOf(a.propertyId!);
+      final bIndex = sortedPropertyIds.indexOf(b.propertyId!);
+      return aIndex.compareTo(bIndex);
+    });
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: Column(
@@ -74,22 +102,21 @@ class _ManageCalendarScreenState extends ConsumerState<Venuscreen> {
           ),
           Expanded(
             child: Container(
-              child: propertyState.isNotEmpty
+              child: filteredProperties.isNotEmpty
                   ? ListView.builder(
-                      itemCount: propertyState.length,
+                      itemCount: filteredProperties.length,
                       itemBuilder: (context, index) {
-                        final property = propertyState[index];
+                        final property = filteredProperties[index];
                         return Container(
                           margin:
                               EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.deepPurple[50], // background color
+                            color: Colors.deepPurple[50],
                             border: Border.all(
-                              color: Colors.deepPurple.shade200, // border color
-                              width: 1, // border width
+                              color: Colors.deepPurple.shade200,
+                              width: 1,
                             ),
-                            borderRadius:
-                                BorderRadius.circular(12), // rounded corners
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: PropertyCard(
                             property: property,

@@ -7,6 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Colors/coustcolors.dart';
 import '../Providers/property.dart';
+import '../Providers/subscribed_provider.dart';
+import '../Providers/venues_provider.dart';
+import '../models/get_properties_model.dart';
 import '../utils/bbapi.dart';
 import 'venudetails.dart';
 
@@ -22,6 +25,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     GetData();
     ref.read(propertyprovider.notifier).getProperties();
+    // Add these to fetch subscribed properties
+    ref.read(propertyNotifierProvider.notifier).getproperty();
+    ref.read(subscriptionProvider.notifier).fetchSubscriptions();
   }
 
   Future<void> GetData() async {
@@ -38,6 +44,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final propertyState = ref.watch(propertyprovider);
+
+    // Add this to watch subscribed properties
+    final subscribedPropertyState =
+        ref.watch(propertyNotifierProvider).data ?? [];
+    final subscriptions = ref.watch(subscriptionProvider);
+
+    // Get unique property IDs from subscriptions, sorted by start_time
+    final Set<int> uniquePropertyIds = {};
+    final sortedPropertyIds = <int>[];
+
+    for (var subscription in subscriptions) {
+      if (!uniquePropertyIds.contains(subscription.Id)) {
+        uniquePropertyIds.add(subscription.Id);
+        sortedPropertyIds.add(subscription.Id);
+      }
+    }
+
+    // Filter properties that match the IDs from subscriptions
+    final filteredProperties = subscribedPropertyState.where((property) {
+      return property.propertyId != null &&
+          uniquePropertyIds.contains(property.propertyId);
+    }).toList();
+
+    // Sort properties based on subscription order
+    filteredProperties.sort((a, b) {
+      final aIndex = sortedPropertyIds.indexOf(a.propertyId!);
+      final bIndex = sortedPropertyIds.indexOf(b.propertyId!);
+      return aIndex.compareTo(bIndex);
+    });
+
     return Scaffold(
       backgroundColor: CoustColors.colrFill,
       body: Column(
@@ -157,7 +193,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                   ),
-                
                   Padding(
                     padding: const EdgeInsets.only(left: 15.0),
                     child: Padding(
@@ -165,19 +200,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Section(
-                            title: 'Newly added',
-                            items: [
-                              Item('BerkahMaju', 'Kiel', 'assets/new_image.jpg',), 
-                              Item('CahayaBerkat', 'Sterlitamak', 'assets/hotel_image.jpeg'),
-                              Item('MutiaraAbadi', 'Chelyabinsk', 'assets/hotel_image2.jpeg'),
-                            ],
-                          ),
-                          SizedBox(height: 20),
-                          Section(
-                            title: 'Recently viewed',
-                            items: [
-                              Item('Swagath Grand Banquet Hall', '', 'assets/hotel_image3.jpeg'),
+                          // Add Subscribed Properties Section
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Newly added',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 20),
+                              Container(
+                                height: 240, // Adjust height as needed
+                                child: filteredProperties.isNotEmpty
+                                    ? ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: filteredProperties.length,
+                                        itemBuilder: (context, index) {
+                                          final property =
+                                              filteredProperties[index];
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                                right: 16.0),
+                                            child: PropertyHorizontalCard(
+                                                property: property),
+                                          );
+                                        },
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          'No venues',
+                                          style: TextStyle(color: Colors.grey),
+                                        ),
+                                      ),
+                              ),
                             ],
                           ),
                         ],
@@ -191,7 +247,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 5.0),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 20.0, vertical: 5.0),
                     child: Container(
                       color: Colors.white,
                       child: Column(
@@ -214,250 +271,131 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                   ),
-                  
-                  //const Padding(
-                  //   padding: EdgeInsets.only(left: 20.0, right: 20, top: 5),
-                  //   child: Text('Recent Venue Reviews',
-                  //       style: TextStyle(
-                  //           fontSize: 18, fontWeight: FontWeight.bold)),
-                  // ),
-                  // Padding(
-                  //   padding: EdgeInsets.all(20),
-                  //   child: propertyState.when(
-                  //       loading: () =>
-                  //           Center(child: CircularProgressIndicator()),
-                  //       error: (error, stack) =>
-                  //           Center(child: Text('Error: $error')),
-                  //       data: (properties) {
-                  //         return ListView.builder(
-                  //             physics: NeverScrollableScrollPhysics(),
-                  //             shrinkWrap: true,
-                  //             itemCount: properties.length,
-                  //             itemBuilder: (context, index) {
-                  //               final property = properties[index];
-                  //               LatLng latLng = PropertyLocationConverter
-                  //                   .parseLocationString(
-                  //                       '${property.location}');
-                  //               String imageurl = '${Bbapi.baseUrl}' +
-                  //                   '${property.propertyPic}';
-                  //               return Padding(
-                  //                 padding: const EdgeInsets.symmetric(
-                  //                     horizontal: 8.0, vertical: 4.0),
-                  //                 child: Card(
-                  //                   elevation: 4.0,
-                  //                   child: Padding(
-                  //                     padding: const EdgeInsets.only(
-                  //                         top: 16.0,
-                  //                         bottom: 16,
-                  //                         right: 16,
-                  //                         left: 25),
-                  //                     child: Column(
-                  //                       children: [
-                  //                         Row(
-                  //                           children: [
-                  //                             Container(),
-                  //                             Image.network(
-                  //                               imageurl,
-                  //                               width: 50,
-                  //                               height: 50,
-                  //                               fit: BoxFit.fill,
-                  //                             ),
-                  //                             SizedBox(width: 16),
-                  //                             Expanded(
-                  //                               child: Padding(
-                  //                                 padding:
-                  //                                     const EdgeInsets.only(
-                  //                                         left: 7.0),
-                  //                                 child: Column(
-                  //                                   crossAxisAlignment:
-                  //                                       CrossAxisAlignment
-                  //                                           .start,
-                  //                                   children: [
-                  //                                     Text(
-                  //                                       "item.heading",
-                  //                                       style: const TextStyle(
-                  //                                           fontSize: 24,
-                  //                                           fontWeight:
-                  //                                               FontWeight.bold,
-                  //                                           color:
-                  //                                               Colors.black),
-                  //                                     ),
-                  //                                     Row(
-                  //                                       children: [
-                  //                                         const Icon(Icons.star,
-                  //                                             color:
-                  //                                                 Colors.amber,
-                  //                                             size: 16),
-                  //                                         const SizedBox(
-                  //                                             width: 4),
-                  //                                         Text(
-                  //                                             '${property.averageRating} (${property.reviewCount})',
-                  //                                             style: const TextStyle(
-                  //                                                 fontStyle:
-                  //                                                     FontStyle
-                  //                                                         .italic,
-                  //                                                 fontSize: 16,
-                  //                                                 color: Colors
-                  //                                                     .black)),
-                  //                                       ],
-                  //                                     ),
-                  //                                     Text(
-                  //                                       '${property.address1} ' +
-                  //                                           '${property.address2}\n'
-                  //                                               '${property.pincode}',
-                  //                                       style: const TextStyle(
-                  //                                         fontSize: 16,
-                  //                                         color: CoustColors
-                  //                                             .colrSubText,
-                  //                                       ),
-                  //                                     ),
-                  //                                   ],
-                  //                                 ),
-                  //                               ),
-                  //                             ),
-                  //                           ],
-                  //                         ),
-                  //                         SizedBox(
-                  //                           width: double.infinity,
-                  //                           child: ElevatedButton(
-                  //                             onPressed: () async {
-                  //                               Navigator.push(
-                  //                                   context,
-                  //                                   MaterialPageRoute(
-                  //                                       builder: (context) =>
-                  //                                           VenuDetailsScreen(
-                  //                                               property:
-                  //                                                   property)));
-                  //                             },
-                  //                             child: const Text('View Details'),
-                  //                           ),
-                  //                         ),
-                  //                       ],
-                  //                     ),
-                  //                   ),
-                  //                 ),
-                  //               );
-                  //             });
-                  //       }),
-                  // )
-                    Padding(
-              padding: const EdgeInsets.only(top: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Text(
-                      'Recent Venue Reviews',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    padding: const EdgeInsets.only(top: 20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Text(
+                            'Recent Venue Reviews',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: reviews.length,
+                          itemBuilder: (context, index) {
+                            final review = reviews[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20.0, vertical: 10.0),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Image.asset(
+                                        review['imageAsset'],
+                                        height: 50,
+                                        width: 50,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Icon(Icons.error);
+                                        },
+                                      ),
+                                      SizedBox(width: 15),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              review['venueName'],
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                            Text(
+                                              review['heading'],
+                                              style: TextStyle(
+                                                  fontStyle: FontStyle.italic),
+                                            ),
+                                            Text(
+                                              'User: ${review['userName']}',
+                                              style:
+                                                  TextStyle(color: Colors.grey),
+                                            ),
+                                            Row(
+                                              children: [
+                                                Icon(Icons.star,
+                                                    color: Colors.orange,
+                                                    size: 16),
+                                                SizedBox(width: 5),
+                                                Text('${review['rating']} / 5'),
+                                              ],
+                                            ),
+                                            SizedBox(height: 5),
+                                            Text(
+                                              review['comment'],
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 10),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: Text('Details'),
+                                          content: Text(
+                                              'Details for ${review['venueName']} by ${review['userName']}'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                              child: Text('Close'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    child: Text('View Details'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 10),
-                  ListView.builder(
-                    shrinkWrap: true, // Ensures ListView takes only necessary space
-                    physics: NeverScrollableScrollPhysics(), // Prevents scrolling inside ListView
-                    itemCount: reviews.length,
-                    itemBuilder: (context, index) {
-                      final review = reviews[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Image.asset(
-                                  review['imageAsset'], // Use asset image
-                                  height: 50,
-                                  width: 50,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Icon(Icons.error); // Fallback for image error
-                                  },
-                                ),
-                                SizedBox(width: 15),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        review['venueName'], // Venue name
-                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      Text(
-                                        review['heading'], // Review heading
-                                        style: TextStyle(fontStyle: FontStyle.italic),
-                                      ),
-                                      Text(
-                                        'User: ${review['userName']}', // User name
-                                        style: TextStyle(color: Colors.grey),
-                                      ),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.star, color: Colors.orange, size: 16),
-                                          SizedBox(width: 5),
-                                          Text('${review['rating']} / 5'), // Rating
-                                        ],
-                                      ),
-                                      SizedBox(height: 5),
-                                      Text(
-                                        review['comment'], // Review comment
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 10),
-                            ElevatedButton(
-                              onPressed: () {
-                                // Navigate to details or show more information
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: Text('Details'),
-                                    content: Text('Details for ${review['venueName']} by ${review['userName']}'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: Text('Close'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                              child: Text('View Details'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
                 ],
               ),
-
-              ),
-                ],
             ),
-              
           ),
-            ),
         ],
-        
       ),
-    
     );
   }
-}
- // Sample review data
+
+  // Sample review data
   final List<Map<String, dynamic>> reviews = [
     {
       'imageAsset': 'assets/hotel_image4.jpeg',
       'venueName': 'Swagath Grand',
       'userName': 'User name',
       'rating': 4.5,
-      'comment': 'Phasellus accumsan imperdiet tempor. Cras tincidunt, arcu nec eleifend porttitor, orci est vehicula.',
+      'comment':
+          'Phasellus accumsan imperdiet tempor. Cras tincidunt, arcu nec eleifend porttitor, orci est vehicula.',
       'heading': 'Excellent Venue!'
     },
     {
@@ -465,7 +403,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'venueName': 'Swagath Grand',
       'userName': 'User name',
       'rating': 4.5,
-      'comment': 'Phasellus accumsan imperdiet tempor. Cras tincidunt, arcu nec eleifend porttitor, orci est vehicula.',
+      'comment':
+          'Phasellus accumsan imperdiet tempor. Cras tincidunt, arcu nec eleifend porttitor, orci est vehicula.',
       'heading': 'Amazing Service!'
     },
     {
@@ -473,36 +412,127 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'venueName': 'Swagath Grand',
       'userName': 'User name',
       'rating': 4.5,
-      'comment': 'Phasellus accumsan imperdiet tempor. Cras tincidunt, arcu nec eleifend porttitor, orci est vehicula.',
+      'comment':
+          'Phasellus accumsan imperdiet tempor. Cras tincidunt, arcu nec eleifend porttitor, orci est vehicula.',
       'heading': 'Memorable Experience'
     },
   ];
-class Section extends StatelessWidget {
-  final String title;
-  final List<Item> items;
+}
 
-  Section({required this.title, required this.items});
+// Add this new widget for horizontal property cards
+class PropertyHorizontalCard extends StatelessWidget {
+  final Data property;
+
+  const PropertyHorizontalCard({super.key, required this.property});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 20),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: items.map((item) => ItemWidget(item: item)).toList(),
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pushNamed(
+          '/venue_details',
+          arguments: {'property': property},
+        );
+      },
+      child: Container(
+        width: 180,
+        decoration: BoxDecoration(
+          color: Colors.deepPurple[50],
+          border: Border.all(
+            color: Colors.deepPurple.shade200,
+            width: 1,
           ),
+          borderRadius: BorderRadius.circular(12),
         ),
-      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (property.coverPic != null)
+              ClipRRect(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                child: Image.network(
+                  'https://www.gocodedesigners.com/banquetbookingz/${property.coverPic}',
+                  width: 180,
+                  height: 120,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 180,
+                    height: 120,
+                    color: Colors.grey[300],
+                    child: Center(child: Icon(Icons.image_not_supported)),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    property.propertyName ?? 'No Name',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    property.address ?? 'No Address',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pushNamed(
+                          '/venue_details',
+                          arguments: {'property': property},
+                        );
+                      },
+                      child: Text('View', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
+
+// class Section extends StatelessWidget {
+//   final String title;
+//   final List<Item> items;
+//
+//   Section({required this.title, required this.items});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Text(
+//           title,
+//           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+//         ),
+//         SizedBox(height: 20),
+//         SingleChildScrollView(
+//           scrollDirection: Axis.horizontal,
+//           child: Row(
+//             children: items.map((item) => ItemWidget(item: item)).toList(),
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }
 
 class Item {
   final String name;
@@ -532,219 +562,13 @@ class ItemWidget extends StatelessWidget {
           SizedBox(height: 10),
           Text(item.name, style: TextStyle(fontSize: 16)),
           if (item.location.isNotEmpty)
-            Text(item.location, style: TextStyle(fontSize: 14, color: Colors.grey)),
+            Text(item.location,
+                style: TextStyle(fontSize: 14, color: Colors.grey)),
         ],
       ),
     );
   }
 }
-
-               //  const Padding(
-//                     padding: EdgeInsets.only(left: 20.0, right: 20, top: 5),
-//                     child: Text('Recently viewed',
-//                         style: TextStyle(
-//                             fontSize: 18, fontWeight: FontWeight.bold)),
-//                   ),
-//                   Container(
-//                     width: double.infinity,
-//                     padding:
-//                         EdgeInsets.symmetric(horizontal: 20.0, vertical: 5.0),
-//                     child: propertyState.when(
-//                         loading: () =>
-//                             Center(child: CircularProgressIndicator()),
-//                         error: (error, stack) =>
-//                             Center(child: Text('Error: $error')),
-//                         data: (properties) {
-//                           final property = properties[0];
-//                           LatLng latLng =
-//                               PropertyLocationConverter.parseLocationString(
-//                                   '${property.location}');
-//                            String imageurl =
-//                               '${Bbapi.baseUrl}' + '${property.propertyPic}';
-//                           return Column(
-//                             mainAxisAlignment: MainAxisAlignment.center,
-//                             children: [
-//                               Image.network(
-//                                 imageurl,
-//                                 height: 100,
-//                                 width: 100,
-//                                 fit: BoxFit.fill,
-//                               ),
-//                               Text(property.pincode!,
-//                                   style:
-//                                       TextStyle(fontWeight: FontWeight.bold)),
-//                             ],
-//                           );
-//                         }),
-//                   ),
-//                   const Padding(
-//                     padding: EdgeInsets.only(left: 20.0, right: 20, top: 5),
-//                     child: Text('Testimonial',
-//                         style: TextStyle(
-//                             fontSize: 18, fontWeight: FontWeight.bold)),
-//                   ),
-//                   Padding(
-//                     padding:
-//                         EdgeInsets.symmetric(horizontal: 20.0, vertical: 5.0),
-//                     child: Container(
-//                       color: Colors.white,
-//                       child: Column(
-//                         mainAxisAlignment: MainAxisAlignment.center,
-//                         children: [
-//                           const Text(
-//                               'Banquet Bookz: Event planning made easy! Love the intuitive design.',
-//                               textAlign: TextAlign.center),
-//                           SizedBox(height: 8),
-//                           Text('Kristin Watson',
-//                               style: TextStyle(fontWeight: FontWeight.bold)),
-//                           Row(
-//                             mainAxisAlignment: MainAxisAlignment.center,
-//                             children: List.generate(
-//                                 5,
-//                                 (index) => Icon(Icons.star,
-//                                     color: Colors.amber, size: 16)),
-//                           ),
-//                         ],
-//                       ),
-//                     ),
-//                   ),
-//                   const Padding(
-//                     padding: EdgeInsets.only(left: 20.0, right: 20, top: 5),
-//                     child: Text('Recent Venue Reviews',
-//                         style: TextStyle(
-//                             fontSize: 18, fontWeight: FontWeight.bold)),
-//                   ),
-//                   Padding(
-//                     padding: EdgeInsets.all(20),
-//                     child: propertyState.when(
-//                         loading: () =>
-//                             Center(child: CircularProgressIndicator()),
-//                         error: (error, stack) =>
-//                             Center(child: Text('Error: $error')),
-//                         data: (properties) {
-//                           return ListView.builder(
-//                               physics: NeverScrollableScrollPhysics(),
-//                               shrinkWrap: true,
-//                               itemCount: properties.length,
-//                               itemBuilder: (context, index) {
-//                                 // final item = _items[index];
-//                                 final property = properties[index];
-//                                 LatLng latLng = PropertyLocationConverter
-//                                     .parseLocationString(
-//                                         '${property.location}');
-//                                 String imageurl = '${Bbapi.baseUrl}' +
-//                                     '${property.propertyPic}';
-//                                 return Padding(
-//                                   padding: const EdgeInsets.symmetric(
-//                                       horizontal: 8.0, vertical: 4.0),
-//                                   child: Card(
-//                                     elevation: 4.0,
-//                                     child: Padding(
-//                                       padding: const EdgeInsets.only(
-//                                           top: 16.0,
-//                                           bottom: 16,
-//                                           right: 16,
-//                                           left: 25),
-//                                       child: Column(
-//                                         children: [
-//                                           Row(
-//                                             children: [
-//                                               Container(),
-//                                               Image.network(
-//                                                 imageurl,
-//                                                 width: 50,
-//                                                 height: 50,
-//                                                 fit: BoxFit.fill,
-//                                               ),
-//                                               SizedBox(width: 16),
-//                                               Expanded(
-//                                                 child: Padding(
-//                                                   padding:
-//                                                       const EdgeInsets.only(
-//                                                           left: 7.0),
-//                                                   child: Column(
-//                                                     crossAxisAlignment:
-//                                                         CrossAxisAlignment
-//                                                             .start,
-//                                                     children: [
-//                                                       Text(
-//                                                         "item.heading",
-//                                                         style: const TextStyle(
-//                                                             fontSize: 24,
-//                                                             fontWeight:
-//                                                                 FontWeight.bold,
-//                                                             color:
-//                                                                 Colors.black),
-//                                                       ),
-//                                                       Row(
-//                                                         children: [
-//                                                           const Icon(Icons.star,
-//                                                               color:
-//                                                                   Colors.amber,
-//                                                               size: 16),
-//                                                           const SizedBox(
-//                                                               width: 4),
-//                                                           Text(
-//                                                               '${property.averageRating} (${property.reviewCount})',
-//                                                               style: const TextStyle(
-//                                                                   fontStyle:
-//                                                                       FontStyle
-//                                                                           .italic,
-//                                                                   fontSize: 16,
-//                                                                   color: Colors
-//                                                                       .black)),
-//                                                         ],
-//                                                       ),
-//                                                       Text(
-//                                                         '${property.address1} ' +
-//                                                             '${property.address2}\n'
-//                                                                 '${property.pincode}',
-//                                                         style: const TextStyle(
-//                                                           fontSize: 16,
-//                                                           color: CoustColors
-//                                                               .colrSubText,
-//                                                         ),
-//                                                       ),
-//                                                     ],
-//                                                   ),
-//                                                 ),
-//                                               ),
-//                                             ],
-//                                           ),
-//                                           SizedBox(
-//                                             width: double.infinity,
-//                                             child: ElevatedButton(
-//                                               onPressed: () async {
-//                                                 // Handle button press
-
-//                                                 Navigator.push(
-//                                                     context,
-//                                                     MaterialPageRoute(
-//                                                         builder: (context) =>
-//                                                             VenuDetailsScreen(
-//                                                                 property:
-//                                                                     property)));
-//                                               },
-//                                               child: const Text('View Details'),
-//                                             ),
-//                                           ),
-//                                         ],
-//                                       ),
-//                                     ),
-//                                   ),
-//                                 );
-//                               });
-//                         }),
-//                   )
-//                 ],
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
 
 class QuickAccessCard extends StatelessWidget {
   final IconData icon;
@@ -786,11 +610,4 @@ class QuickAccessCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class VenueCard {
-  final String name;
-  final String location;
-
-  VenueCard({required this.name, required this.location});
 }
