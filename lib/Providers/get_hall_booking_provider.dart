@@ -6,58 +6,112 @@ import '../models/get_hall_booking.dart';
 import '../models/get_properties_model.dart';
 import '../providers/auth.dart';
 
-final hallBookingsProvider =
-    FutureProvider.autoDispose<List<GetHallBooking>>((ref) async {
-  // Get the auth state
-  final authState = ref.read(authprovider);
-  final userId = authState.userId;
+// Create a class to manage the hall booking state
+class GetHallBookingNotifier
+    extends StateNotifier<AsyncValue<List<GetHallBooking>>> {
+  final Ref ref;
 
-  // Get booking data
-  final response = await http.get(
-    Uri.parse('https://www.gocodedesigners.com/hallbooking'),
-    headers: {
-      'Content-Type': 'application/json',
-      if (authState.token != null) 'Authorization': 'Bearer ${authState.token}',
-    },
-  );
+  GetHallBookingNotifier(this.ref) : super(const AsyncValue.loading());
 
-  if (response.statusCode == 200) {
-    final responseData = jsonDecode(response.body);
-    if (responseData['success'] == true && responseData['messages'] != null) {
-      // Extract bookings from the response
-      final bookingsData = responseData['messages'][0] as List<dynamic>;
+  // Explicit method to load bookings
+  Future<void> loadBookings() async {
+    // Set loading state
+    state = const AsyncValue.loading();
 
-      // Filter bookings for the current user
-      final userBookings = bookingsData
-          .map((booking) => GetHallBooking.fromJson(booking))
-          .where((booking) => booking.userId == userId)
-          .toList();
+    try {
+      // Get the auth state from the provider
+      final authState = ref.read(authprovider);
 
-      // Get properties data using your existing provider
-      final propertyState = ref.read(propertyNotifierProvider);
-      final propertiesData = propertyState.data;
+      // Debug prints to verify auth state
+      print("Auth state: ${authState.toJson()}");
 
-      // Populate hall names and property names
-      if (propertiesData != null) {
-        for (var booking in userBookings) {
-          for (var property in propertiesData) {
-            if (property.halls != null) {
-              for (var hall in property.halls!) {
-                if (hall.hallId == booking.hallId) {
-                  booking.hallName = hall.hallName;
-                  booking.propertyName = property.propertyName;
-                  break;
-                }
-              }
-            }
-            if (booking.hallName != null) break; // Stop if found
-          }
-        }
+      // Try to auto-login if no userId is found
+      int? userId = authState.userId;
+      if (userId == null) {
+        // Attempt to refresh auth state with auto-login
+        print("User ID is null, attempting to auto-login");
+        final authNotifier = ref.read(authprovider.notifier);
+        final autoLoginSuccess = await authNotifier.tryAutoLogin();
+        print("Auto-login success: $autoLoginSuccess");
+
+        // Get the updated auth state
+        final updatedAuthState = ref.read(authprovider);
+        userId = updatedAuthState.userId;
+        print("Updated auth state userId: $userId");
       }
 
-      return userBookings;
+      // Check if userId exists after auto-login attempt
+      if (userId == null) {
+        throw Exception('User ID not found. Please log in again.');
+      }
+
+      // Get booking data
+      final response = await http.get(
+        Uri.parse('https://www.gocodedesigners.com/hallbooking'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${authState.token}',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true &&
+            responseData['messages'] != null) {
+          // Extract bookings from the response
+          final bookingsData = responseData['messages'][0] as List<dynamic>;
+
+          // Filter bookings for the current user if userId is available
+          final userBookings = authState.userId != null
+              ? bookingsData
+                  .map((booking) => GetHallBooking.fromJson(booking))
+                  .where((booking) => booking.userId == authState.userId)
+                  .toList()
+              : bookingsData
+                  .map((booking) => GetHallBooking.fromJson(booking))
+                  .toList();
+
+          // Get properties data
+          final propertyState = ref.read(propertyNotifierProvider);
+          final propertiesData = propertyState.data;
+
+          // Populate hall names and property names
+          if (propertiesData != null) {
+            for (var booking in userBookings) {
+              for (var property in propertiesData) {
+                if (property.halls != null) {
+                  for (var hall in property.halls!) {
+                    if (hall.hallId == booking.hallId) {
+                      booking.hallName = hall.hallName;
+                      booking.propertyName = property.propertyName;
+                      break;
+                    }
+                  }
+                }
+                if (booking.hallName != null) break; // Stop if found
+              }
+            }
+          }
+
+          // Update state with data
+          state = AsyncValue.data(userBookings);
+        } else {
+          state =
+              AsyncValue.error('Invalid response format', StackTrace.current);
+        }
+      } else {
+        state = AsyncValue.error(
+            'Failed to load bookings: ${response.statusCode}',
+            StackTrace.current);
+      }
+    } catch (error, stackTrace) {
+      state = AsyncValue.error('Error: $error', stackTrace);
     }
   }
+}
 
-  throw Exception('Failed to load bookings');
+// Create a StateNotifierProvider for the hall bookings
+final gethallBookingsNotifierProvider = StateNotifierProvider<
+    GetHallBookingNotifier, AsyncValue<List<GetHallBooking>>>((ref) {
+  return GetHallBookingNotifier(ref);
 });

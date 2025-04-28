@@ -2,7 +2,7 @@ class Bbapi {
   static const String baseUrl = "https://www.gocodedesigners.com";
   static const String register = "$baseUrl/register/";
   static const String registration = "$baseUrl/bbusereg";
-  static const String update_user = "$baseUrl/update_user/";
+  static const String update_user = "$baseUrl/bbupdateuser";
   static const String mobilecheck = "$baseUrl/check_mobile_exists/";
   static const String login_otp = "$baseUrl/verify_phone_number/";
   static const String login_mail = "$baseUrl/bbadminlogin";

@@ -1,10 +1,9 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../Colors/coustcolors.dart';
+import '../Providers/get_hall_booking_provider.dart';
 import '../Providers/venues_provider.dart';
-import '../providers/get_hall_booking_provider.dart';
 import '../models/get_hall_booking.dart';
 import 'package:intl/intl.dart';
 
@@ -21,23 +20,40 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
   late TabController _tabController;
   String searchQuery = '';
   TextEditingController searchController = TextEditingController();
+  bool _isFirstLoad = true;
 
   @override
   void initState() {
-    // Inside your build method, add a listener to refresh when tabs change
-
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
 
-    // Add listener to refresh state when tab changes
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         setState(() {}); // Explicitly refresh when tab changes
       }
     });
+  }
 
-    // Fetch properties data for hall name mapping
-    ref.read(propertyNotifierProvider.notifier).getproperty();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // This ensures we only load data once when the widget is first built
+    if (_isFirstLoad) {
+      _loadData();
+      _isFirstLoad = false;
+    }
+  }
+
+  // Explicit method to load all required data
+  Future<void> _loadData() async {
+    // Show a loading indicator if needed
+
+    // First load properties
+    await ref.read(propertyNotifierProvider.notifier).getproperty();
+
+    // Then load bookings
+    await ref.read(gethallBookingsNotifierProvider.notifier).loadBookings();
   }
 
   @override
@@ -65,16 +81,10 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
   bool isCurrentBooking(GetHallBooking booking) {
     final today = DateTime.now();
-
-    // Parse the booking date and ensure we're only comparing the date part
     final bookingDate = DateTime.parse(booking.date);
-
-    // Create DateTime objects with only date components for accurate comparison
     final todayDateOnly = DateTime(today.year, today.month, today.day);
     final bookingDateOnly =
         DateTime(bookingDate.year, bookingDate.month, bookingDate.day);
-
-    // Compare the dates (ignoring time)
     return todayDateOnly.isAtSameMomentAs(bookingDateOnly);
   }
 
@@ -90,31 +100,17 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
       List<GetHallBooking> bookings, int tabIndex) {
     List<GetHallBooking> filteredList;
 
-    print("Filtering for tab index: $tabIndex");
-    print("Total bookings before filter: ${bookings.length}");
-
     switch (tabIndex) {
       case 1: // Current
         filteredList =
             bookings.where((booking) => isCurrentBooking(booking)).toList();
-        print("Current bookings found: ${filteredList.length}");
-        // Debug what dates are being compared
-        if (filteredList.isEmpty && bookings.isNotEmpty) {
-          final today = DateTime.now();
-          print("Today is: ${DateFormat('yyyy-MM-dd').format(today)}");
-          for (var i = 0; i < min(5, bookings.length); i++) {
-            print("Booking date ${i + 1}: ${bookings[i].date}");
-          }
-        }
         break;
       case 2: // Upcoming
         filteredList =
             bookings.where((booking) => isUpcomingBooking(booking)).toList();
-        print("Upcoming bookings found: ${filteredList.length}");
         break;
       default: // All
         filteredList = bookings;
-        print("All bookings: ${filteredList.length}");
     }
 
     // Apply search filter if search query exists
@@ -138,7 +134,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final bookingsAsyncValue = ref.watch(hallBookingsProvider);
+    final bookingsAsyncValue = ref.watch(gethallBookingsNotifierProvider);
 
     return Scaffold(
       backgroundColor: CoustColors.colrFill,
@@ -218,326 +214,345 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
             ),
           ),
 
-          // Bookings List
+          // Bookings List with Pull-to-Refresh
           Expanded(
-            child: bookingsAsyncValue.when(
-              data: (bookings) {
-                final filteredBookings =
-                    filterBookings(bookings, _tabController.index);
+            child: RefreshIndicator(
+              onRefresh: _loadData,
+              color: Color(0xFF6418C3),
+              child: bookingsAsyncValue.when(
+                data: (bookings) {
+                  final filteredBookings =
+                      filterBookings(bookings, _tabController.index);
 
-                if (filteredBookings.isEmpty) {
-                  return Center(
+                  if (filteredBookings.isEmpty) {
+                    return ListView(
+                      // Wrap in ListView for RefreshIndicator to work
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.4,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 64,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No bookings found',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredBookings.length,
+                    itemBuilder: (context, index) {
+                      final booking = filteredBookings[index];
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Card content remains the same
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on,
+                                    color: Color(0xFF6418C3),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      booking.propertyName ??
+                                          'Unknown Property',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  // Container(
+                                  //   padding: const EdgeInsets.symmetric(
+                                  //     horizontal: 8,
+                                  //     vertical: 4,
+                                  //   ),
+                                  //   decoration: BoxDecoration(
+                                  //     color: booking.isPaid == 1
+                                  //         ? Colors.green.shade100
+                                  //         : Colors.red.shade100,
+                                  //     borderRadius: BorderRadius.circular(12),
+                                  //   ),
+                                  //   child: Text(
+                                  //     booking.isPaid == 1 ? 'Paid' : 'Unpaid',
+                                  //     style: TextStyle(
+                                  //       color: booking.isPaid == 1
+                                  //           ? Colors.green.shade800
+                                  //           : Colors.red.shade800,
+                                  //       fontWeight: FontWeight.bold,
+                                  //       fontSize: 12,
+                                  //     ),
+                                  //   ),
+                                  // ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Hall: ${booking.hallName ?? 'Unknown Hall'}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_today,
+                                    color: Color(0xFF6418C3),
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    formatDate(booking.date),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.access_time,
+                                    color: Color(0xFF6418C3),
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              // Action buttons
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  // The buttons remain the same
+                                  if (isUpcomingBooking(booking))
+                                    OutlinedButton(
+                                      onPressed: () {
+                                        // Show cancel confirmation dialog
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Cancel Booking'),
+                                            content: const Text(
+                                              'Are you sure you want to cancel this booking?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
+                                                child: const Text('No'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  // TODO: Implement cancel booking API call
+                                                  Navigator.pop(context);
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                          'Booking cancelled successfully'),
+                                                    ),
+                                                  );
+                                                },
+                                                child: const Text(
+                                                  'Yes',
+                                                  style: TextStyle(
+                                                      color: Colors.red),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                        side:
+                                            const BorderSide(color: Colors.red),
+                                      ),
+                                      child: const Text('Cancel'),
+                                    ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      // View details code remains the same
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        shape: const RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(20),
+                                          ),
+                                        ),
+                                        builder: (context) =>
+                                            DraggableScrollableSheet(
+                                          initialChildSize: 0.6,
+                                          maxChildSize: 0.9,
+                                          minChildSize: 0.5,
+                                          expand: false,
+                                          builder:
+                                              (context, scrollController) =>
+                                                  SingleChildScrollView(
+                                            controller: scrollController,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.all(20.0),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Center(
+                                                    child: Container(
+                                                      width: 60,
+                                                      height: 5,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey[300],
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(10),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 20),
+                                                  const Text(
+                                                    'Booking Details',
+                                                    style: TextStyle(
+                                                      fontSize: 24,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 20),
+                                                  _detailRow(
+                                                      'Property',
+                                                      booking.propertyName ??
+                                                          'Unknown'),
+                                                  _detailRow(
+                                                      'Hall',
+                                                      booking.hallName ??
+                                                          'Unknown'),
+                                                  _detailRow('Date',
+                                                      formatDate(booking.date)),
+                                                  _detailRow('Time',
+                                                      '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}'),
+                                                  _detailRow(
+                                                      'Status',
+                                                      booking.isPaid == 1
+                                                          ? 'Paid'
+                                                          : 'Unpaid'),
+                                                  _detailRow('Booking ID',
+                                                      '#${booking.id}'),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF6418C3),
+                                    ),
+                                    child: const Text(
+                                      'View Details',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Color(0xFF6418C3)),
+                  ),
+                ),
+                error: (error, stackTrace) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.calendar_today_outlined,
-                          size: 64,
-                          color: Colors.grey[400],
+                          Icons.error_outline,
+                          size: 48,
+                          color: Colors.red[300],
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'No bookings found',
+                        const Text(
+                          'Failed to load bookings',
                           style: TextStyle(
                             fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          error.toString(),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
                             color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadData,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6418C3),
+                          ),
+                          child: const Text(
+                            'Try Again',
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                       ],
                     ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredBookings.length,
-                  itemBuilder: (context, index) {
-                    final booking = filteredBookings[index];
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.location_on,
-                                  color: Color(0xFF6418C3),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    booking.propertyName ?? 'Unknown Property',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: booking.isPaid == 1
-                                        ? Colors.green.shade100
-                                        : Colors.red.shade100,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    booking.isPaid == 1 ? 'Paid' : 'Unpaid',
-                                    style: TextStyle(
-                                      color: booking.isPaid == 1
-                                          ? Colors.green.shade800
-                                          : Colors.red.shade800,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Hall: ${booking.hallName ?? 'Unknown Hall'}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.calendar_today,
-                                  color: Color(0xFF6418C3),
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  formatDate(booking.date),
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.access_time,
-                                  color: Color(0xFF6418C3),
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            // Action buttons
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                // Only show cancellation for upcoming bookings
-                                if (isUpcomingBooking(booking))
-                                  OutlinedButton(
-                                    onPressed: () {
-                                      // Show cancel confirmation dialog
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text('Cancel Booking'),
-                                          content: const Text(
-                                            'Are you sure you want to cancel this booking?',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              child: const Text('No'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                // TODO: Implement cancel booking API call
-                                                Navigator.pop(context);
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                        'Booking cancelled successfully'),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text(
-                                                'Yes',
-                                                style: TextStyle(
-                                                    color: Colors.red),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.red,
-                                      side: const BorderSide(color: Colors.red),
-                                    ),
-                                    child: const Text('Cancel'),
-                                  ),
-                                const SizedBox(width: 8),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    // View details - Show a bottom sheet with full details
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      shape: const RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.vertical(
-                                          top: Radius.circular(20),
-                                        ),
-                                      ),
-                                      builder: (context) =>
-                                          DraggableScrollableSheet(
-                                        initialChildSize: 0.6,
-                                        maxChildSize: 0.9,
-                                        minChildSize: 0.5,
-                                        expand: false,
-                                        builder: (context, scrollController) =>
-                                            SingleChildScrollView(
-                                          controller: scrollController,
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(20.0),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Center(
-                                                  child: Container(
-                                                    width: 60,
-                                                    height: 5,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey[300],
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 20),
-                                                const Text(
-                                                  'Booking Details',
-                                                  style: TextStyle(
-                                                    fontSize: 24,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 20),
-                                                _detailRow(
-                                                    'Property',
-                                                    booking.propertyName ??
-                                                        'Unknown'),
-                                                _detailRow(
-                                                    'Hall',
-                                                    booking.hallName ??
-                                                        'Unknown'),
-                                                _detailRow('Date',
-                                                    formatDate(booking.date)),
-                                                _detailRow('Time',
-                                                    '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}'),
-                                                _detailRow(
-                                                    'Status',
-                                                    booking.isPaid == 1
-                                                        ? 'Paid'
-                                                        : 'Unpaid'),
-                                                _detailRow('Booking ID',
-                                                    '#${booking.id}'),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF6418C3),
-                                  ),
-                                  child: const Text(
-                                    'View Details',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6418C3)),
-                ),
-              ),
-              error: (error, stackTrace) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: Colors.red[300],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Failed to load bookings',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        error.toString(),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          ref.refresh(hallBookingsProvider);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6418C3),
-                        ),
-                        child: const Text(
-                          'Try Again',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),

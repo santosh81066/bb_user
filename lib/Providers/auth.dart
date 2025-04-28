@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import '../models/authstate.dart';
 import '../utils/bbapi.dart';
 import 'loaded.dart';
 import 'phoneauthnotifier.dart';
+import 'package:http_parser/http_parser.dart';
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(AuthState());
@@ -42,30 +44,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return false;
     }
   }
-  // Future<bool> tryAutoLogin() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //
-  //   final userDataString = prefs.getString('userData');
-  //   if (userDataString != null && userDataString.isNotEmpty) {
-  //     return false;
-  //   }
-  //
-  //   if (!prefs.containsKey('userData')) {
-  //     //   print('trylogin is false');
-  //     //   return false;
-  //
-  //     final extractData =
-  //         json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
-  //
-  //     if (state.token == null) {
-  //       state = AuthState.fromJson(extractData);
-  //     }
-  //     return true;
-  //   } else {
-  //     print('user not authenticated');
-  //     return false;
-  //   }
-  // }
 
   Future<void> registerUser(BuildContext context, String? username,
       String? email, String? phonenum, String? password, WidgetRef ref) async {
@@ -283,78 +261,95 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // Handle other status codes as needed
   }
 
-  Future<void> UserUpdate(BuildContext context, String? username,
-      String? phonenum, String? email, WidgetRef ref) async {
-    const url = Bbapi.update_user;
+  Future<void> updateUserProfile(
+      BuildContext context,
+      String? username,
+      String? phonenum,
+      String? email,
+      String? password,
+      File? profilePic,
+      WidgetRef ref) async {
+    const url = Bbapi
+        .update_user; // Use your endpoint here: "https://www.gocodedesigners.com/bbupdateuser"
     final prefs = await SharedPreferences.getInstance();
     final extractData =
         json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
     String token = extractData['access_token'];
     String usertype = extractData['user_role'];
+    int userId = extractData['user_id'];
+
     final loadingState = ref.read(loadingProvider2.notifier);
     loadingState.state = true;
-    var response = await http.put(Uri.parse(url),
-        headers: {
-          'Content-Type':
-              'application/json', // Set the content type to application/json
-          'Authorization': 'Token $token',
-        },
-        body: json.encode({
-          "username": username!,
-          "email": email!,
-          "mobile_no": phonenum!,
-        }));
-    print("username: $username!");
-    var userDetails = json.decode(response.body);
-    print('booking response:$userDetails');
-    print('booking response Status Code:${response.statusCode}');
-    switch (response.statusCode) {
-      case 200:
-        loadingState.state = false;
-        print('success');
-        showDialog(
-          context: context!,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Success'),
-              content: const Text('Updated successful'),
-              actions: [
-                ElevatedButton(
-                  child: const Text('OK'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-        //clear data and copy curren datad
-        state = state.copyWith(
-            token: token,
-            username: userDetails["username"],
-            email: userDetails["email"],
-            mobileno: userDetails["mobile_no"],
-            usertype: usertype);
-        final userData = json.encode({
-          'access_token': state.token,
-          'username': state.username,
-          'email': state.email,
-          'mobile_no': state.mobileno,
-          'user_role': state.usertype,
-        });
-        await prefs.setString('userData', userData);
-        Navigator.of(context)
-            .pushNamed('/'); //Goto Login page if Registered succesfully
-        break;
-      case 400:
-        loadingState.state = false;
-        showDialog(
-            context: context!,
+
+    // Create multipart request for profile picture upload
+    var request = http.MultipartRequest('POST', Uri.parse(url));
+
+    // Add headers
+    request.headers.addAll({
+      'Authorization': 'Token $token',
+    });
+
+    // Add text fields
+    request.fields['id'] = userId.toString();
+    request.fields['username'] = username!;
+    request.fields['email'] = email!;
+    request.fields['mobile_no'] = phonenum!;
+
+    // Add password if provided
+    if (password != null && password.isNotEmpty) {
+      request.fields['password'] = password;
+    }
+
+    // Add profile picture if provided
+    if (profilePic != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'profile_pic',
+        profilePic.path,
+        contentType: MediaType('image', 'jpeg'),
+      ));
+    }
+
+    try {
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+      var userDetails = json.decode(response.body);
+
+      print('Update response: $userDetails');
+      print('Status code: ${response.statusCode}');
+
+      switch (response.statusCode) {
+        case 200:
+          loadingState.state = false;
+          print('Success');
+
+          // Update local state with new data
+          state = state.copyWith(
+              token: token,
+              username: userDetails["username"],
+              email: userDetails["email"],
+              mobileno: userDetails["mobile_no"],
+              profilePic: userDetails["profile_pic"],
+              usertype: usertype);
+
+          // Save updated data to SharedPreferences
+          final userData = json.encode({
+            'user_id': state.userId,
+            'access_token': state.token,
+            'username': state.username,
+            'email': state.email,
+            'mobile_no': state.mobileno,
+            'profile_pic': state.profilePic,
+            'user_role': state.usertype,
+          });
+          await prefs.setString('userData', userData);
+
+          // Show success message
+          showDialog(
+            context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                title: const Text('Failed'),
-                content: Text("$userDetails"),
+                title: const Text('Success'),
+                content: const Text('Profile updated successfully'),
                 actions: [
                   ElevatedButton(
                     child: const Text('OK'),
@@ -364,10 +359,73 @@ class AuthNotifier extends StateNotifier<AuthState> {
                   ),
                 ],
               );
-            });
-        break;
+            },
+          );
+
+          // REMOVED navigation to home page to stay on profile page
+          // Navigator.of(context).pushNamed('/');
+          break;
+
+        case 400:
+          loadingState.state = false;
+          showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Failed'),
+                  content: Text(cleanErrorMessage(userDetails.toString())),
+                  actions: [
+                    ElevatedButton(
+                      child: const Text('OK'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                );
+              });
+          break;
+
+        default:
+          loadingState.state = false;
+          showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Error'),
+                  content: Text(
+                      'An unexpected error occurred: ${response.statusCode}'),
+                  actions: [
+                    ElevatedButton(
+                      child: const Text('OK'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                );
+              });
+          break;
+      }
+    } catch (e) {
+      loadingState.state = false;
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Network error: $e'),
+              actions: [
+                ElevatedButton(
+                  child: const Text('OK'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          });
     }
-    // Handle other status codes as needed
   }
 
   void clear() {
