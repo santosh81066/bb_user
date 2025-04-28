@@ -36,7 +36,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       // Verify state was updated
       print(
-          'State after update - token: ${state.token}, userId: ${state.userId}');
+          'State after update - token: ${state.token}, userId: ${state.userId}, username: ${state.username}');
 
       return true;
     } catch (e) {
@@ -269,8 +269,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       String? password,
       File? profilePic,
       WidgetRef ref) async {
-    const url = Bbapi
-        .update_user; // Use your endpoint here: "https://www.gocodedesigners.com/bbupdateuser"
+    const url = Bbapi.update_user;
     final prefs = await SharedPreferences.getInstance();
     final extractData =
         json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
@@ -320,16 +319,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
       switch (response.statusCode) {
         case 200:
           loadingState.state = false;
-          print('Success');
+          print('Success - Response details: $userDetails');
+
+          // Make sure we're extracting the correct data format from the response
+          var updatedUsername = userDetails["username"] ?? username;
+          var updatedEmail = userDetails["email"] ?? email;
+          var updatedMobileNo = userDetails["mobile_no"] ?? phonenum;
+          var updatedProfilePic = userDetails["profile_pic"];
+
+          print(
+              'Updated values - Username: $updatedUsername, Email: $updatedEmail, Mobile: $updatedMobileNo');
 
           // Update local state with new data
           state = state.copyWith(
+              userId: userId,
               token: token,
-              username: userDetails["username"],
-              email: userDetails["email"],
-              mobileno: userDetails["mobile_no"],
-              profilePic: userDetails["profile_pic"],
+              username: updatedUsername,
+              email: updatedEmail,
+              mobileno: updatedMobileNo,
+              profilePic: updatedProfilePic,
               usertype: usertype);
+
+          // Log the state after update
+          print(
+              'State after update: Username: ${state.username}, Email: ${state.email}, Mobile: ${state.mobileno}');
 
           // Save updated data to SharedPreferences
           final userData = json.encode({
@@ -341,7 +354,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
             'profile_pic': state.profilePic,
             'user_role': state.usertype,
           });
+
+          print('Saving updated user data: $userData');
           await prefs.setString('userData', userData);
+
+          // Verify the data was saved correctly
+          final verifyData =
+              json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+          print('Verification - Saved data: $verifyData');
 
           // Show success message
           showDialog(
@@ -362,8 +382,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
             },
           );
 
-          // REMOVED navigation to home page to stay on profile page
-          // Navigator.of(context).pushNamed('/');
+          // REMOVED: Navigator.of(context).pushNamed('/');
           break;
 
         case 400:
@@ -425,6 +444,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
               ],
             );
           });
+    }
+  }
+
+  // Add this method to AuthNotifier class
+  Future<void> refreshUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('userData')) {
+      final extractData =
+          json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+      print('Refreshing user data from SharedPreferences: $extractData');
+
+      // Force state update with refreshed data
+      state = AuthState.fromJson(extractData);
+
+      // Emit notification that state has changed
+      state = state.copyWith(); // This forces listeners to update
     }
   }
 

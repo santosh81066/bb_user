@@ -23,6 +23,11 @@ class ProfileSetingsScreen extends ConsumerStatefulWidget {
 
 class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
   final _validationkey = GlobalKey<FormState>();
+  String sUsername = "";
+  String sEmail = "";
+  String sNum = "";
+  String? profilePicUrl;
+
   final TextEditingController _edtxtName = TextEditingController();
   final TextEditingController _edtxtNum = TextEditingController();
   final TextEditingController _edtxtMail = TextEditingController();
@@ -35,31 +40,44 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Set a very short delay to ensure the widget is fully mounted
-    Future.microtask(() {
-      _initializeControllers();
-    });
+    _loadUserData();
   }
 
-  // Initialize controllers with current auth state data
-  void _initializeControllers() {
-    final authState = ref.read(authprovider);
-
+  Future<void> _loadUserData() async {
     setState(() {
-      _edtxtName.text = authState.username ?? "";
-      _edtxtMail.text = authState.email ?? "";
-      _edtxtNum.text = authState.mobileno ?? "";
-      _isLoading = false;
+      _isLoading = true;
     });
-  }
 
-  // Update controllers when auth state changes
-  void _updateControllersFromState() {
-    final authState = ref.read(authprovider);
+    try {
+      // First refresh the provider state
+      await ref.read(authprovider.notifier).refreshUserData();
 
-    _edtxtName.text = authState.username ?? "";
-    _edtxtMail.text = authState.email ?? "";
-    _edtxtNum.text = authState.mobileno ?? "";
+      // Then get the latest user data from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.containsKey('userData')) {
+        final extractData =
+            json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+        print("User data loaded after refresh: $extractData");
+
+        // Update the UI with this fresh data
+        setState(() {
+          sUsername = extractData['username'] ?? "";
+          sEmail = extractData['email'] ?? "";
+          sNum = extractData['mobile_no'] ?? "";
+          profilePicUrl = extractData['profile_pic'];
+
+          _edtxtName.text = sUsername;
+          _edtxtMail.text = sEmail;
+          _edtxtNum.text = sNum;
+        });
+      }
+    } catch (e) {
+      print("Error loading user data: $e");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _selectImage() async {
@@ -74,11 +92,55 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
     }
   }
 
+  Future<void> _handleProfileUpdate() async {
+    if (_validationkey.currentState!.validate()) {
+      // Show loading indicator
+      setState(() => _isLoading = true);
+
+      try {
+        // Call the update method
+        await ref.read(authprovider.notifier).updateUserProfile(
+            context,
+            _edtxtName.text.trim(),
+            _edtxtNum.text.trim(),
+            _edtxtMail.text.trim(),
+            _edtxtPassword.text.isEmpty ? null : _edtxtPassword.text,
+            _profileImage,
+            ref);
+
+        // Clear password field after update
+        _edtxtPassword.clear();
+
+        // Reset profile image selection
+        setState(() {
+          _profileImage = null;
+        });
+
+        // Force a small delay to ensure SharedPreferences has been updated
+        await Future.delayed(Duration(milliseconds: 300));
+
+        // Force refresh from SharedPreferences
+        await ref.read(authprovider.notifier).refreshUserData();
+
+        // After refreshing the provider, reload the UI data
+        await _loadUserData();
+
+        // Show a confirmation that data has been updated
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Profile updated successfully')),
+        );
+      } catch (e) {
+        print("Error updating profile: $e");
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Watch the auth state to rebuild when it changes
-    final authState = ref.watch(authprovider);
-
     return Scaffold(
       backgroundColor: CoustColors.colrFill,
       body: _isLoading
@@ -122,14 +184,13 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
                                     backgroundImage: _profileImage != null
                                         ? FileImage(_profileImage!)
                                             as ImageProvider
-                                        : (authState.profilePic != null &&
-                                                authState.profilePic!.isNotEmpty
-                                            ? NetworkImage(
-                                                authState.profilePic!)
+                                        : (profilePicUrl != null &&
+                                                profilePicUrl!.isNotEmpty
+                                            ? NetworkImage(profilePicUrl!)
                                             : null),
                                     child: (_profileImage == null &&
-                                            (authState.profilePic == null ||
-                                                authState.profilePic!.isEmpty))
+                                            (profilePicUrl == null ||
+                                                profilePicUrl!.isEmpty))
                                         ? const Icon(Icons.person,
                                             size: 60, color: Colors.grey)
                                         : null,
@@ -253,40 +314,7 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
 
                           // Update button
                           CoustEvalButton(
-                            onPressed: () async {
-                              if (_validationkey.currentState!.validate()) {
-                                setState(() {
-                                  _isLoading = true;
-                                });
-
-                                await ref
-                                    .read(authprovider.notifier)
-                                    .updateUserProfile(
-                                      context,
-                                      _edtxtName.text.trim(),
-                                      _edtxtNum.text.trim(),
-                                      _edtxtMail.text.trim(),
-                                      _edtxtPassword.text.isEmpty
-                                          ? null
-                                          : _edtxtPassword.text,
-                                      _profileImage,
-                                      ref,
-                                    );
-
-                                // Force refresh SharedPreferences data here
-                                await ref
-                                    .read(authprovider.notifier)
-                                    .tryAutoLogin();
-
-                                setState(() {
-                                  _isLoading = false;
-                                  // Clear the selected profile image after update
-                                  _profileImage = null;
-                                  // Clear the password field
-                                  _edtxtPassword.clear();
-                                });
-                              }
-                            },
+                            onPressed: _handleProfileUpdate,
                             buttonName: "Update",
                             radius: 8,
                             width: double.infinity,
@@ -300,22 +328,5 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
               ),
             ),
     );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // This ensures we update controllers when auth state changes
-    // or when navigating back to this screen
-    _updateControllersFromState();
-  }
-
-  @override
-  void dispose() {
-    _edtxtName.dispose();
-    _edtxtNum.dispose();
-    _edtxtMail.dispose();
-    _edtxtPassword.dispose();
-    super.dispose();
   }
 }
