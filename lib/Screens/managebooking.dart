@@ -25,7 +25,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this); // Updated to 4 tabs
 
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
@@ -95,6 +95,26 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
     return bookingDate.isAfter(today);
   }
 
+  // Check if a booking is completed (past date)
+  bool isCompletedBooking(GetHallBooking booking) {
+    final today = DateTime.now();
+    final bookingDate = DateTime.parse(booking.date);
+    final bookingEndTime = booking.slotToTime.split(':');
+    final bookingEndHour = int.parse(bookingEndTime[0]);
+    final bookingEndMinute = int.parse(bookingEndTime[1]);
+
+    // Create a DateTime object for the end of the booking
+    final bookingEndDateTime = DateTime(
+      bookingDate.year,
+      bookingDate.month,
+      bookingDate.day,
+      bookingEndHour,
+      bookingEndMinute,
+    );
+
+    return bookingEndDateTime.isBefore(today);
+  }
+
   // Filter bookings based on tab and search query
   List<GetHallBooking> filterBookings(
       List<GetHallBooking> bookings, int tabIndex) {
@@ -109,13 +129,17 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
         filteredList =
             bookings.where((booking) => isUpcomingBooking(booking)).toList();
         break;
+      case 3: // Completed
+        filteredList =
+            bookings.where((booking) => isCompletedBooking(booking)).toList();
+        break;
       default: // All
         filteredList = bookings;
     }
 
     // Apply search filter if search query exists
     if (searchQuery.isNotEmpty) {
-      return filteredList.where((booking) {
+      filteredList = filteredList.where((booking) {
         final hallNameMatch = booking.hallName
                 ?.toLowerCase()
                 .contains(searchQuery.toLowerCase()) ??
@@ -128,6 +152,33 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
         return hallNameMatch || propertyMatch || dateMatch;
       }).toList();
     }
+
+    // Sort bookings by date (and time) in descending order (latest first)
+    filteredList.sort((a, b) {
+      final dateA = DateTime.parse(a.date);
+      final dateB = DateTime.parse(b.date);
+
+      // If dates are the same, sort by time
+      if (dateA
+          .isAtSameMomentAs(DateTime(dateB.year, dateB.month, dateB.day))) {
+        final timeA = a.slotFromTime.split(':');
+        final timeB = b.slotFromTime.split(':');
+
+        final hourA = int.parse(timeA[0]);
+        final hourB = int.parse(timeB[0]);
+
+        if (hourA != hourB) {
+          return hourB.compareTo(hourA); // Later hour first
+        }
+
+        final minuteA = int.parse(timeA[1]);
+        final minuteB = int.parse(timeB[1]);
+        return minuteB.compareTo(minuteA); // Later minute first
+      }
+
+      // Otherwise sort by date
+      return dateB.compareTo(dateA); // Latest date first
+    });
 
     return filteredList;
   }
@@ -204,10 +255,12 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                 Tab(text: 'All'),
                 Tab(text: 'Current'),
                 Tab(text: 'Upcoming'),
+                Tab(text: 'Completed'),
               ],
               labelColor: Color(0xFF6418C3),
               unselectedLabelColor: Colors.grey,
               indicatorColor: Color(0xFF6418C3),
+              isScrollable: true, // Allow tabs to scroll if needed
               onTap: (_) {
                 setState(() {}); // Refresh UI on tab change
               },
@@ -236,13 +289,17 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  Icons.calendar_today_outlined,
+                                  _tabController.index == 3
+                                      ? Icons.event_available
+                                      : Icons.calendar_today_outlined,
                                   size: 64,
                                   color: Colors.grey[400],
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'No bookings found',
+                                  _tabController.index == 3
+                                      ? 'No completed bookings found'
+                                      : 'No bookings found',
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey[600],
@@ -262,6 +319,8 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                     itemCount: filteredBookings.length,
                     itemBuilder: (context, index) {
                       final booking = filteredBookings[index];
+                      final isCompleted = _tabController.index == 3 ||
+                          isCompletedBooking(booking);
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 16),
@@ -274,7 +333,6 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Card content remains the same
                               Row(
                                 children: [
                                   const Icon(
@@ -294,28 +352,36 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  // Container(
-                                  //   padding: const EdgeInsets.symmetric(
-                                  //     horizontal: 8,
-                                  //     vertical: 4,
-                                  //   ),
-                                  //   decoration: BoxDecoration(
-                                  //     color: booking.isPaid == 1
-                                  //         ? Colors.green.shade100
-                                  //         : Colors.red.shade100,
-                                  //     borderRadius: BorderRadius.circular(12),
-                                  //   ),
-                                  //   child: Text(
-                                  //     booking.isPaid == 1 ? 'Paid' : 'Unpaid',
-                                  //     style: TextStyle(
-                                  //       color: booking.isPaid == 1
-                                  //           ? Colors.green.shade800
-                                  //           : Colors.red.shade800,
-                                  //       fontWeight: FontWeight.bold,
-                                  //       fontSize: 12,
-                                  //     ),
-                                  //   ),
-                                  // ),
+                                  if (isCompleted)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.check_circle,
+                                            size: 14,
+                                            color: Colors.green.shade800,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Completed',
+                                            style: TextStyle(
+                                              color: Colors.green.shade800,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                 ],
                               ),
                               const SizedBox(height: 8),
@@ -361,144 +427,168 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              // Action buttons
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  // The buttons remain the same
-                                  if (isUpcomingBooking(booking))
-                                    OutlinedButton(
-                                      onPressed: () {
-                                        // Show cancel confirmation dialog
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: const Text('Cancel Booking'),
-                                            content: const Text(
-                                              'Are you sure you want to cancel this booking?',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(context),
-                                                child: const Text('No'),
+                              // Action buttons - Only show for non-completed bookings
+                              if (!isCompleted)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    if (isUpcomingBooking(booking))
+                                      OutlinedButton(
+                                        onPressed: () {
+                                          // Show cancel confirmation dialog
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title:
+                                                  const Text('Cancel Booking'),
+                                              content: const Text(
+                                                'Are you sure you want to cancel this booking?',
                                               ),
-                                              TextButton(
-                                                onPressed: () {
-                                                  // TODO: Implement cancel booking API call
-                                                  Navigator.pop(context);
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                          'Booking cancelled successfully'),
-                                                    ),
-                                                  );
-                                                },
-                                                child: const Text(
-                                                  'Yes',
-                                                  style: TextStyle(
-                                                      color: Colors.red),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: const Text('No'),
                                                 ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    // TODO: Implement cancel booking API call
+                                                    Navigator.pop(context);
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                            'Booking cancelled successfully'),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: const Text(
+                                                    'Yes',
+                                                    style: TextStyle(
+                                                        color: Colors.red),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                          side: const BorderSide(
+                                              color: Colors.red),
+                                        ),
+                                        child: const Text('Cancel'),
+                                      ),
+                                    const SizedBox(width: 20),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        _showBookingDetails(context, booking);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFF6418C3),
+                                      ),
+                                      child: const Text(
+                                        'View Details',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              // For completed bookings, show review and view details buttons
+                              if (isCompleted)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    // Add Review dropdown button
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                            color: const Color(0xFF6418C3)),
+                                      ),
+                                      child: PopupMenuButton<String>(
+                                        onSelected: (value) {
+                                          // Navigate to review page based on selection
+                                          if (value == 'property') {
+                                            // TODO: Navigate to property review page
+                                            Navigator.pushNamed(
+                                                context, '/review');
+                                          } else if (value == 'hall') {
+                                            // TODO: Navigate to hall review page
+                                            Navigator.pushNamed(
+                                                context, '/review');
+                                          }
+                                        },
+                                        itemBuilder: (context) => [
+                                          const PopupMenuItem(
+                                            value: 'property',
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.home, size: 18),
+                                                SizedBox(width: 8),
+                                                Text('For Property'),
+                                              ],
+                                            ),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 'hall',
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.meeting_room,
+                                                    size: 18),
+                                                SizedBox(width: 8),
+                                                Text('For Hall'),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12.0, vertical: 8.0),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.rate_review,
+                                                size: 16,
+                                                color: Color(0xFF6418C3),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              const Text(
+                                                'Add Review',
+                                                style: TextStyle(
+                                                  color: Color(0xFF6418C3),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              const Icon(
+                                                Icons.arrow_drop_down,
+                                                color: Color(0xFF6418C3),
                                               ),
                                             ],
                                           ),
-                                        );
-                                      },
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                        side:
-                                            const BorderSide(color: Colors.red),
+                                        ),
                                       ),
-                                      child: const Text('Cancel'),
                                     ),
-                                  const SizedBox(width: 8),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      // View details code remains the same
-                                      showModalBottomSheet(
-                                        context: context,
-                                        isScrollControlled: true,
-                                        shape: const RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.vertical(
-                                            top: Radius.circular(20),
-                                          ),
-                                        ),
-                                        builder: (context) =>
-                                            DraggableScrollableSheet(
-                                          initialChildSize: 0.6,
-                                          maxChildSize: 0.9,
-                                          minChildSize: 0.5,
-                                          expand: false,
-                                          builder:
-                                              (context, scrollController) =>
-                                                  SingleChildScrollView(
-                                            controller: scrollController,
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.all(20.0),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Center(
-                                                    child: Container(
-                                                      width: 60,
-                                                      height: 5,
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.grey[300],
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(10),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 20),
-                                                  const Text(
-                                                    'Booking Details',
-                                                    style: TextStyle(
-                                                      fontSize: 24,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 20),
-                                                  _detailRow(
-                                                      'Property',
-                                                      booking.propertyName ??
-                                                          'Unknown'),
-                                                  _detailRow(
-                                                      'Hall',
-                                                      booking.hallName ??
-                                                          'Unknown'),
-                                                  _detailRow('Date',
-                                                      formatDate(booking.date)),
-                                                  _detailRow('Time',
-                                                      '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}'),
-                                                  _detailRow(
-                                                      'Status',
-                                                      booking.isPaid == 1
-                                                          ? 'Paid'
-                                                          : 'Unpaid'),
-                                                  _detailRow('Booking ID',
-                                                      '#${booking.id}'),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF6418C3),
+                                    const SizedBox(width: 20),
+                                    // View Details button
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        _showBookingDetails(context, booking);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFF6418C3),
+                                      ),
+                                      child: const Text(
+                                        'View Details',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
                                     ),
-                                    child: const Text(
-                                      'View Details',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
@@ -559,6 +649,136 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Method to show booking details in a bottom sheet
+  void _showBookingDetails(BuildContext context, GetHallBooking booking) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 60,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Booking Details',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (isCompletedBooking(booking))
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Add Review button in details view
+                          PopupMenuButton<String>(
+                            onSelected: (value) {},
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'property',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.home, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('For Property'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'hall',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.meeting_room, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('For Hall'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            icon: const Icon(
+                              Icons.rate_review,
+                              color: Color(0xFF6418C3),
+                              size: 20,
+                            ),
+                            tooltip: 'Add Review',
+                          ),
+                          const SizedBox(width: 8),
+                          // Completed badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.check_circle,
+                                  size: 14,
+                                  color: Colors.green.shade800,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Completed',
+                                  style: TextStyle(
+                                    color: Colors.green.shade800,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _detailRow('Property', booking.propertyName ?? 'Unknown'),
+                _detailRow('Hall', booking.hallName ?? 'Unknown'),
+                _detailRow('Date', formatDate(booking.date)),
+                _detailRow('Time',
+                    '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}'),
+                _detailRow('Status', booking.isPaid == 1 ? 'Paid' : 'Unpaid'),
+                _detailRow('Booking ID', '#${booking.id}'),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

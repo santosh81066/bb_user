@@ -2,6 +2,8 @@ import 'package:bb_user/Colors/coustcolors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 import '../Providers/auth.dart';
 import '../Providers/loaded.dart';
@@ -15,6 +17,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isDeleting = false;
+
   Future<void> logout(BuildContext context, WidgetRef ref) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -25,6 +29,115 @@ class _SettingsScreenState extends State<SettingsScreen> {
       print('trylogin is false');
       // Navigator.pushNamed(context, '/');
     }
+  }
+
+  Future<void> deleteAccount(BuildContext context, WidgetRef ref) async {
+    try {
+      setState(() {
+        _isDeleting = true;
+      });
+
+      // Get user ID from auth provider
+      final authState = ref.read(authprovider);
+      final userId = authState.userId;
+
+      if (userId == null) {
+        throw Exception("User ID not found");
+      }
+
+      // Make API call to delete account
+      final response = await http.delete(
+        Uri.parse('https://www.gocodedesigners.com/bbadminlogin'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "id": userId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // Account deleted successfully, now log out
+        await logout(context, ref);
+
+        // Navigate to login or landing page
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Your account has been deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete account: ${response.body}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (error) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
+    }
+  }
+
+  void _showDeleteConfirmationDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'Warning: This action will permanently delete your account and all associated data. This action cannot be undone. Are you sure you want to proceed?',
+          style: TextStyle(color: Colors.red),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: _isDeleting
+                ? null
+                : () {
+                    Navigator.of(ctx).pop();
+                    deleteAccount(context, ref);
+                  },
+            child: _isDeleting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Delete Account'),
+          ),
+        ],
+      ),
+    );
   }
 
   void profile_settings() {
@@ -128,22 +241,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(
                             height: 20,
                           ),
-                          // ListTile(
-                          //   title: const coustText(sName: 'Display userid'),
-                          //   onTap: () {
-                          //     // Get the user ID from the auth provider
-                          //     final authState = ref.read(authprovider);
-                          //     final userId = authState.userId;
-                          //     // Show it in a snackbar
-                          //     ScaffoldMessenger.of(context).showSnackBar(
-                          //       SnackBar(
-                          //         content: Text(
-                          //             'Your user ID is: ${userId ?? 'Not available'}'),
-                          //         duration: const Duration(seconds: 3),
-                          //       ),
-                          //     );
-                          //   },
-                          // ),
+                          ListTile(
+                            title: const coustText(sName: 'Display userid'),
+                            onTap: () {
+                              // Get the user ID from the auth provider
+                              final authState = ref.read(authprovider);
+                              final userId = authState.userId;
+                              print(userId);
+                            },
+                          ),
                           TextButton(
                               onPressed: () {
                                 logout(context, ref);
@@ -176,9 +282,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(left: 10.0),
+                padding: const EdgeInsets.only(left: 10.0, bottom: 20.0),
                 child: TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      _showDeleteConfirmationDialog(context, ref);
+                    },
                     child: const Text(
                       "Delete Account",
                       style: TextStyle(

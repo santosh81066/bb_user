@@ -13,6 +13,7 @@ import 'Screens/notificationsettings.dart';
 import 'Screens/paymenthistory.dart';
 import 'Screens/profilesettings.dart';
 import 'Screens/registration.dart';
+import 'Screens/review.dart';
 import 'Screens/settings.dart';
 import 'Screens/upcoming.dart';
 import 'Widgets/bottomnavigation.dart';
@@ -104,6 +105,9 @@ class MyApp extends ConsumerWidget {
         },
         '/settings': (BuildContext context) {
           return const SettingsScreen();
+        },
+        '/review': (BuildContext context) {
+          return ReviewPage();
         },
       },
     );
