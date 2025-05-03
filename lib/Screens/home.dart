@@ -583,7 +583,7 @@ class QuickAccessCard extends StatelessWidget {
       onTap: () {
         switch (label) {
           case "My Bookings":
-            Navigator.of(context).pushNamed('/upcoming_booking');
+            Navigator.of(context).pushNamed('/manage_booking');
             break;
           case "Payment History":
             Navigator.of(context).pushNamed('/payment_history');
