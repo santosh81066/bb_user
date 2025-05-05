@@ -25,15 +25,24 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
   Map<int, List<String>> hallTimeSlots = {};
 
   late List<String> years;
-  final List<String> months =
-      List.generate(12, (index) => (index + 1).toString().padLeft(2, '0'));
+  // ✅ Define full month list
+  final List<String> allMonths = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  late List<String> months;
+
+
 
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
+
+    months = allMonths.sublist(now.month - 1); // keep current + future months
+    selectedMonth = months[0];  // set initial selected month to current month
     selectedYear = now.year.toString();
-    selectedMonth = now.month.toString().padLeft(2, '0');
     focusedDay = now;
 
     years = List.generate(5, (index) => (now.year + index).toString());
@@ -43,7 +52,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
 
   void _updateCalendarBounds() {
     int year = int.parse(selectedYear);
-    int month = int.parse(selectedMonth);
+    int month = allMonths.indexOf(selectedMonth) + 1;
     firstDay = DateTime(year, month, 1);
     lastDay = DateTime(year, month + 1, 0);
     focusedDay = firstDay;
@@ -76,11 +85,11 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
 
       // Call the provider to make the booking
       await ref.read(hallBookingProvider.notifier).postBooking(
-            hallId: hallId,
-            date: formattedDate,
-            slotFromTime: slotFromTime,
-            slotToTime: slotToTime,
-          );
+        hallId: hallId,
+        date: formattedDate,
+        slotFromTime: slotFromTime,
+        slotToTime: slotToTime,
+      );
 
       // Close loading dialog
       Navigator.of(context).pop();
@@ -191,235 +200,312 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       ),
       body: halls.isNotEmpty
           ? Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ListView.builder(
-                itemCount: halls.length,
-                itemBuilder: (context, index) {
-                  final hall = halls[index];
-                  final isSelected = selectedIndex == index;
+        padding: const EdgeInsets.all(8.0),
+        child: ListView.builder(
+          itemCount: halls.length,
+          itemBuilder: (context, index) {
+            final hall = halls[index];
+            final isSelected = selectedIndex == index;
 
-                  return Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedIndex = isSelected ? null : index;
-                            selectedSlot =
-                                null; // Reset selected slot when changing halls
-                          });
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.deepPurple[50],
-                            border: Border.all(
-                                color: Colors.deepPurple.shade200, width: 1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              _buildImageGallery(hall),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
+            return Column(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedIndex = isSelected ? null : index;
+                      selectedSlot =
+                      null; // Reset selected slot when changing halls
+                    });
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple[50],
+                      border: Border.all(
+                          color: Colors.deepPurple.shade200, width: 1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildImageGallery(hall),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              hall.hallName ?? 'No Hall Name',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                if (hall.images != null &&
+                                    hall.images!.isNotEmpty)
                                   Text(
-                                    hall.hallName ?? 'No Hall Name',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                                    '${hall.images!.length} photos',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
                                     ),
                                   ),
-                                  Row(
-                                    children: [
-                                      if (hall.images != null &&
-                                          hall.images!.isNotEmpty)
-                                        Text(
-                                          '${hall.images!.length} photos',
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        isSelected
-                                            ? Icons.expand_less
-                                            : Icons.expand_more,
-                                        color: Colors.deepPurple,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  isSelected
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                  color: Colors.deepPurple,
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
-                      if (isSelected)
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 16),
-                          padding: const EdgeInsets.all(16),
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border:
-                                Border.all(color: Colors.deepPurple.shade100),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: DropdownButton<String>(
-                                      value: selectedYear,
-                                      isExpanded: true,
-                                      items: years
-                                          .map((year) => DropdownMenuItem(
-                                                value: year,
-                                                child: Text('Year: $year'),
-                                              ))
-                                          .toList(),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedYear = value!;
-                                          _updateCalendarBounds();
-                                          selectedDay =
-                                              null; // Reset selected day
-                                          selectedSlot =
-                                              null; // Reset selected slot
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: DropdownButton<String>(
-                                      value: selectedMonth,
-                                      isExpanded: true,
-                                      items: months
-                                          .map((month) => DropdownMenuItem(
-                                                value: month,
-                                                child: Text('Month: $month'),
-                                              ))
-                                          .toList(),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedMonth = value!;
-                                          _updateCalendarBounds();
-                                          selectedDay =
-                                              null; // Reset selected day
-                                          selectedSlot =
-                                              null; // Reset selected slot
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              TableCalendar(
-                                firstDay: firstDay,
-                                lastDay: lastDay,
-                                focusedDay: focusedDay,
-                                selectedDayPredicate: (day) =>
-                                    isSameDay(day, selectedDay),
-                                calendarFormat: CalendarFormat.month,
-                                headerVisible: false,
-                                onDaySelected: (selected, focused) {
+                      ],
+                    ),
+                  ),
+                ),
+                if (isSelected)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.all(16),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border:
+                      Border.all(color: Colors.deepPurple.shade100),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButton<String>(
+                                value: selectedYear,
+                                isExpanded: true,
+                                items: years
+                                    .map((year) => DropdownMenuItem(
+                                  value: year,
+                                  child: Center(child: Text(' $year')),
+                                ))
+                                    .toList(),
+                                onChanged: (value) {
                                   setState(() {
-                                    selectedDay = selected;
-                                    focusedDay = focused;
-                                    selectedSlot = null; // Reset selected slot
-                                    final hall = halls[selectedIndex!];
-
-                                    // Store time slots with their original format for display
-                                    // but also to use when making API calls
-                                    final slots = hall.slots?.map((slot) {
-                                          return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
-                                        }).toList() ??
-                                        [];
-
-                                    hallTimeSlots[selectedIndex!] = slots;
+                                    selectedYear = value!;
+                                    _updateCalendarBounds();
+                                    selectedDay =
+                                    null; // Reset selected day
+                                    selectedSlot =
+                                    null; // Reset selected slot
                                   });
                                 },
                               ),
-                              if (selectedDay != null) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Available Time Slots on ${selectedDay!.toLocal().toString().split(' ')[0]}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 8),
-                                if ((hallTimeSlots[selectedIndex] ?? [])
-                                    .isEmpty)
-                                  const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Text(
-                                        'No time slots available for this day'),
-                                  )
-                                else
-                                  ...(hallTimeSlots[selectedIndex] ?? []).map(
-                                    (slot) => RadioListTile<String>(
-                                      value: slot,
-                                      groupValue: selectedSlot,
-                                      title: Text(slot),
-                                      activeColor: Colors.deepPurple,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedSlot = value;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                if (selectedSlot != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 12.0),
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.deepPurple,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        onPressed: bookingState is AsyncLoading
-                                            ? null // Disable button during loading
-                                            : () => _bookHall(hall.hallId ?? 0),
-                                        child: const Text('Confirm Booking',
-                                            style:
-                                                TextStyle(color: Colors.white)),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ],
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DropdownButton<String>(
+                                value: selectedMonth,
+                                // show month name
+                                isExpanded: true,
+                                items: months
+                                    .map((month) => DropdownMenuItem(
+                                  value: month,
+                                  child: Center(child: Text(month)),
+                                ))
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedMonth = value!;
+                                    _updateCalendarBounds();
+                                    selectedDay = null; // Reset selected day
+                                    selectedSlot = null; // Reset selected slot
+                                  });
+                                },
+                              ),
+                            ),
+
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TableCalendar(
+                          firstDay: firstDay,
+                          lastDay: lastDay,
+                          focusedDay: focusedDay,
+                          selectedDayPredicate: (day) => isSameDay(day, selectedDay),
+                          calendarFormat: CalendarFormat.month,
+                          calendarStyle: CalendarStyle(
+                            outsideDaysVisible: false,
                           ),
-                        )
-                    ],
-                  );
-                },
-              ),
-            )
+                          headerVisible: false,
+                          enabledDayPredicate: (day) {
+                            final today = DateTime.now();
+                            final todayOnlyDate = DateTime(today.year, today.month, today.day);
+                            return !day.isBefore(todayOnlyDate);
+                          },
+
+                          onDaySelected: (selected, focused) {
+                            setState(() {
+                              selectedDay = selected;
+                              focusedDay = focused;
+                              selectedSlot = null; // Reset selected slot
+                              final hall = halls[selectedIndex!];
+
+                              final slots = hall.slots?.map((slot) {
+                                return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
+                              }).toList() ?? [];
+
+                              hallTimeSlots[selectedIndex!] = slots;
+                            });
+                          },
+                          calendarBuilders: CalendarBuilders(
+                            disabledBuilder: (context, day, focusedDay) {
+                              return Container(
+                                margin: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${day.day}',
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            },
+                            defaultBuilder: (context, day, focusedDay) {
+                              return Container(
+                                margin: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${day.day}',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            },
+                            todayBuilder: (context, day, focusedDay) {
+                              return Container(
+                                margin: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[200],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${day.day}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            },
+                            selectedBuilder: (context, day, focusedDay) {
+                              return Container(
+                                margin: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.deepPurple,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${day.day}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                        ),
+
+                        if (selectedDay != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Available Time Slots on ${selectedDay!.toLocal().toString().split(' ')[0]}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          if ((hallTimeSlots[selectedIndex] ?? [])
+                              .isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Text(
+                                  'No time slots available for this day'),
+                            )
+                          else
+                            ...(hallTimeSlots[selectedIndex] ?? []).map(
+                                  (slot) => RadioListTile<String>(
+                                value: slot,
+                                groupValue: selectedSlot,
+                                title: Text(slot),
+                                activeColor: Colors.deepPurple,
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedSlot = value;
+                                  });
+                                },
+                              ),
+                            ),
+                          if (selectedSlot != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12.0),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurple,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                      BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed: bookingState is AsyncLoading
+                                      ? null // Disable button during loading
+                                      : () => _bookHall(hall.hallId ?? 0),
+                                  child: const Text('Confirm Booking',
+                                      style:
+                                      TextStyle(color: Colors.white)),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ],
+                    ),
+                  )
+              ],
+            );
+          },
+        ),
+      )
           : const Center(
-              child: Text('No halls found for this property'),
-            ),
+        child: Text('No halls found for this property'),
+      ),
     );
   }
 }
