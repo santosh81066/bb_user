@@ -26,7 +26,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this); // Updated to 4 tabs
+    _tabController = TabController(length: 3, vsync: this); // Updated to 3 tabs
 
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
@@ -122,15 +122,11 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
     List<GetHallBooking> filteredList;
 
     switch (tabIndex) {
-      case 1: // Current
-        filteredList =
-            bookings.where((booking) => isCurrentBooking(booking)).toList();
-        break;
-      case 2: // Upcoming
+      case 1: // Upcoming
         filteredList =
             bookings.where((booking) => isUpcomingBooking(booking)).toList();
         break;
-      case 3: // Completed
+      case 2: // Completed
         filteredList =
             bookings.where((booking) => isCompletedBooking(booking)).toList();
         break;
@@ -298,16 +294,15 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
               controller: _tabController,
               tabs: const [
                 Tab(text: 'All'),
-                //Tab(text: 'Current'),
                 Tab(text: 'Upcoming'),
                 Tab(text: 'Completed'),
               ],
               labelColor: Color(0xFF6418C3),
               unselectedLabelColor: Colors.grey,
               indicatorColor: Color(0xFF6418C3),
-              isScrollable: true,
+              labelPadding: EdgeInsets.symmetric(horizontal: 25),
               tabAlignment: TabAlignment.center,
-              labelPadding: EdgeInsets.symmetric(horizontal: 30),
+              isScrollable: true, // Allow tabs to scroll if needed
               onTap: (_) {
                 setState(() {}); // Refresh UI on tab change
               },
@@ -336,7 +331,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  _tabController.index == 3
+                                  _tabController.index == 2
                                       ? Icons.event_available
                                       : Icons.calendar_today_outlined,
                                   size: 64,
@@ -344,7 +339,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  _tabController.index == 3
+                                  _tabController.index == 2
                                       ? 'No completed bookings found'
                                       : 'No bookings found',
                                   style: TextStyle(
@@ -366,7 +361,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                     itemCount: filteredBookings.length,
                     itemBuilder: (context, index) {
                       final booking = filteredBookings[index];
-                      final isCompleted = _tabController.index == 3 ||
+                      final isCompleted = _tabController.index == 2 ||
                           isCompletedBooking(booking);
 
                       return Card(

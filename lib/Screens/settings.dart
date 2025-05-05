@@ -241,15 +241,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(
                             height: 20,
                           ),
-                          ListTile(
-                            title: const coustText(sName: 'Display userid'),
-                            onTap: () {
-                              // Get the user ID from the auth provider
-                              final authState = ref.read(authprovider);
-                              final userId = authState.userId;
-                              print(userId);
-                            },
-                          ),
+                          // ListTile(
+                          //   title: const coustText(sName: 'Display userid'),
+                          //   onTap: () {
+                          //     // Get the user ID from the auth provider
+                          //     final authState = ref.read(authprovider);
+                          //     final userId = authState.userId;
+                          //     print(userId);
+                          //   },
+                          // ),
                           TextButton(
                               onPressed: () {
                                 logout(context, ref);

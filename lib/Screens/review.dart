@@ -150,6 +150,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       body: Column(
         children: [
           // Blue header with back button and title
