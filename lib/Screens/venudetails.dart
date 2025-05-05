@@ -31,12 +31,12 @@ class _VenuDetailsScreenState extends ConsumerState<VenuDetailsScreen> {
     //ref.watch(authprovider.notifier).tryAutoLogin(),
     //ref.read(propertyprovider.notifier).getProperties();
     //PropertyNotifier().getProperties();
-    ref.read(ratingprovider.notifier).getreviews(context, widget.property, ref);
+    // ref.read(ratingprovider.notifier).getreviews(context, widget.property, ref);
   }
 
   @override
   Widget build(BuildContext context) {
-    final ratingstate = ref.watch(ratingprovider);
+    // final ratingstate = ref.watch(ratingprovider);
     Propertystate property = widget.property;
 
     return Scaffold(
@@ -293,27 +293,27 @@ class _VenuDetailsScreenState extends ConsumerState<VenuDetailsScreen> {
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                             SizedBox(height: 8.0),
-                            ratingstate.when(
-                                loading: () {
-                                  return Container();
-                                },
-                                // loading: () =>
-                                //     Center(child: CircularProgressIndicator()),
-                                error: (error, stack) =>
-                                    Center(child: Text('Error: $error')),
-                                data: (reviews) {
-                                  print("length: ${reviews.length}");
-                                  return ListView.builder(
-                                      physics: NeverScrollableScrollPhysics(),
-                                      shrinkWrap: true,
-                                      itemCount: reviews.length,
-                                      itemBuilder: (context, index) {
-                                        // final item = _items[index];
-                                        final review = reviews[index];
-                                        return reviewcard(review);
-                                      });
-                                }),
-                            SizedBox(height: 16.0),
+                            // ratingstate.when(
+                            //     loading: () {
+                            //       return Container();
+                            //     },
+                            //     // loading: () =>
+                            //     //     Center(child: CircularProgressIndicator()),
+                            //     error: (error, stack) =>
+                            //         Center(child: Text('Error: $error')),
+                            //     data: (reviews) {
+                            //       print("length: ${reviews.length}");
+                            //       return ListView.builder(
+                            //           physics: NeverScrollableScrollPhysics(),
+                            //           shrinkWrap: true,
+                            //           itemCount: reviews.length,
+                            //           itemBuilder: (context, index) {
+                            //             // final item = _items[index];
+                            //             final review = reviews[index];
+                            //             return reviewcard(review);
+                            //           });
+                            //     }),
+                            // SizedBox(height: 16.0),
                           ],
                         ),
                       ),

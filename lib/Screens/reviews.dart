@@ -93,12 +93,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         (BuildContext context, WidgetRef ref, Widget? child) {
                       return ElevatedButton(
                         onPressed: () {
-                          ref.read(ratingprovider.notifier).postreviews(
-                              context,
-                              widget.property,
-                              _rating,
-                              _reviewController.text.trim(),
-                              ref);
+                          // ref.read(ratingprovider.notifier).postreviews(
+                          //     context,
+                          //     widget.property,
+                          //     _rating,
+                          //     _reviewController.text.trim(),
+                          //     ref);
                         },
                         child: Text('Submit'),
                         style: ElevatedButton.styleFrom(),

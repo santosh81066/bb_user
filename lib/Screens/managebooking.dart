@@ -6,6 +6,7 @@ import '../Providers/get_hall_booking_provider.dart';
 import '../Providers/venues_provider.dart';
 import '../models/get_hall_booking.dart';
 import 'package:intl/intl.dart';
+import 'package:collection/collection.dart';
 
 class ManageBookingScreen extends ConsumerStatefulWidget {
   const ManageBookingScreen({super.key});
@@ -183,6 +184,50 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
     return filteredList;
   }
 
+  // Method to navigate to review page with appropriate ID
+  void _navigateToReview(String type, GetHallBooking booking) {
+    if (type == 'property') {
+      // Get property ID from the properties list based on property name
+      final propertiesState = ref.read(propertyNotifierProvider);
+      final property = propertiesState.data?.firstWhereOrNull(
+        (prop) => prop.propertyName == booking.propertyName,
+      );
+
+      if (property != null) {
+        // Navigate to property review page with property ID
+        Navigator.pushNamed(
+          context,
+          '/review',
+          arguments: {
+            'type': 'property',
+            'id': property.propertyId,
+            'name': booking.propertyName,
+          },
+        );
+        print("${property.propertyId}");
+      } else {
+        // Show error message if property not found
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Property information not found'),
+          ),
+        );
+      }
+    } else if (type == 'hall') {
+      // Navigate to hall review page with hall ID
+      Navigator.pushNamed(
+        context,
+        '/review',
+        arguments: {
+          'type': 'hall',
+          'id': booking.hallId,
+          'name': booking.hallName,
+        },
+      );
+      print("${booking.hallId}");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bookingsAsyncValue = ref.watch(gethallBookingsNotifierProvider);
@@ -253,14 +298,16 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
               controller: _tabController,
               tabs: const [
                 Tab(text: 'All'),
-                Tab(text: 'Current'),
+                //Tab(text: 'Current'),
                 Tab(text: 'Upcoming'),
                 Tab(text: 'Completed'),
               ],
               labelColor: Color(0xFF6418C3),
               unselectedLabelColor: Colors.grey,
               indicatorColor: Color(0xFF6418C3),
-              isScrollable: true, // Allow tabs to scroll if needed
+              isScrollable: true,
+              tabAlignment: TabAlignment.center,
+              labelPadding: EdgeInsets.symmetric(horizontal: 30),
               onTap: (_) {
                 setState(() {}); // Refresh UI on tab change
               },
@@ -510,16 +557,8 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                       ),
                                       child: PopupMenuButton<String>(
                                         onSelected: (value) {
-                                          // Navigate to review page based on selection
-                                          if (value == 'property') {
-                                            // TODO: Navigate to property review page
-                                            Navigator.pushNamed(
-                                                context, '/review');
-                                          } else if (value == 'hall') {
-                                            // TODO: Navigate to hall review page
-                                            Navigator.pushNamed(
-                                                context, '/review');
-                                          }
+                                          // Navigate to review page with the appropriate ID
+                                          _navigateToReview(value, booking);
                                         },
                                         itemBuilder: (context) => [
                                           const PopupMenuItem(
@@ -702,7 +741,10 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                         children: [
                           // Add Review button in details view
                           PopupMenuButton<String>(
-                            onSelected: (value) {},
+                            onSelected: (value) {
+                              // Navigate to review page with the appropriate ID
+                              _navigateToReview(value, booking);
+                            },
                             itemBuilder: (context) => [
                               const PopupMenuItem(
                                 value: 'property',
