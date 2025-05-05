@@ -3,6 +3,7 @@ import 'package:bb_user/models/get_properties_model.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../Providers/hall_booking_provider.dart'; // Import your provider
+import 'package:intl/intl.dart';
 
 class HallsCalendarScreen extends ConsumerStatefulWidget {
   const HallsCalendarScreen({super.key});
@@ -19,6 +20,18 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
   late DateTime focusedDay;
   late DateTime firstDay;
   late DateTime lastDay;
+  DateTime _parseTime(String timeStr, DateTime baseDate) {
+    final format = DateFormat.Hms(); // parses 06:00:00
+    // supports '10:00 AM' format
+    final parsedTime = format.parse(timeStr); // parses time into DateTime at 1970
+    return DateTime(
+      baseDate.year,
+      baseDate.month,
+      baseDate.day,
+      parsedTime.hour,
+      parsedTime.minute,
+    );
+  }
 
   String? selectedSlot;
   DateTime? selectedDay;
@@ -40,13 +53,13 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
     super.initState();
     final now = DateTime.now();
 
-    months = allMonths.sublist(now.month - 1); // keep current + future months
-    selectedMonth = months[0];  // set initial selected month to current month
+    selectedMonth = allMonths[now.month - 1];
+// default to current month
     selectedYear = now.year.toString();
     focusedDay = now;
-
     years = List.generate(5, (index) => (now.year + index).toString());
 
+    _updateMonthsList();
     _updateCalendarBounds();
   }
 
@@ -56,6 +69,16 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
     firstDay = DateTime(year, month, 1);
     lastDay = DateTime(year, month + 1, 0);
     focusedDay = firstDay;
+  }
+  void _updateMonthsList() {
+    final now = DateTime.now();
+    if (int.parse(selectedYear) == now.year) {
+      // if current year, show from current month onward
+      months = allMonths.sublist(now.month - 1);
+    } else {
+      // if different year, show all months
+      months = List.from(allMonths);
+    }
   }
 
   Future<void> _bookHall(int hallId) async {
@@ -305,13 +328,16 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                                 onChanged: (value) {
                                   setState(() {
                                     selectedYear = value!;
+                                    _updateMonthsList(); // <- ADD THIS
+                                    if (!months.contains(selectedMonth)) {
+                                      selectedMonth = months.first; // reset month if invalid
+                                    }
                                     _updateCalendarBounds();
-                                    selectedDay =
-                                    null; // Reset selected day
-                                    selectedSlot =
-                                    null; // Reset selected slot
+                                    selectedDay = null;
+                                    selectedSlot = null;
                                   });
                                 },
+
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -346,15 +372,40 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                           focusedDay: focusedDay,
                           selectedDayPredicate: (day) => isSameDay(day, selectedDay),
                           calendarFormat: CalendarFormat.month,
-                          calendarStyle: CalendarStyle(
+                          calendarStyle: const CalendarStyle(
                             outsideDaysVisible: false,
                           ),
                           headerVisible: false,
                           enabledDayPredicate: (day) {
-                            final today = DateTime.now();
-                            final todayOnlyDate = DateTime(today.year, today.month, today.day);
-                            return !day.isBefore(todayOnlyDate);
+                            final now = DateTime.now();
+                            final todayDate = DateTime(now.year, now.month, now.day);
+
+                            if (day.isBefore(todayDate)) {
+                              return false; // past date → disable
+                            }
+
+                            if (selectedIndex == null || hallTimeSlots[selectedIndex] == null) {
+                              return true; // no slots loaded yet → keep enabled
+                            }
+
+                            final slots = hallTimeSlots[selectedIndex]!;
+
+                            // check if ALL slots for this day are in the past
+                            bool allSlotsPast = true;
+
+                            for (var slot in slots) {
+                              final slotFromTimeStr = slot.split('From: ')[1].split(' To: ')[0];
+                              final slotFromTime = _parseTime(slotFromTimeStr, day);
+
+                              if (slotFromTime.isAfter(now)) {
+                                allSlotsPast = false;
+                                break;
+                              }
+                            }
+
+                            return !allSlotsPast; // disable if all slots past
                           },
+
 
                           onDaySelected: (selected, focused) {
                             setState(() {
@@ -458,20 +509,46 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                               child: Text(
                                   'No time slots available for this day'),
                             )
-                          else
-                            ...(hallTimeSlots[selectedIndex] ?? []).map(
-                                  (slot) => RadioListTile<String>(
+                          else ...[
+                            ...((hallTimeSlots[selectedIndex] ?? []).map((slot) {
+                              final now = DateTime.now();
+                              final isToday = selectedDay != null &&
+                                  selectedDay!.year == now.year &&
+                                  selectedDay!.month == now.month &&
+                                  selectedDay!.day == now.day;
+
+                              final slotFromTimeStr = slot.split('From: ')[1].split(' To: ')[0];
+
+                              final slotFromTime = _parseTime(slotFromTimeStr, selectedDay!);
+
+                              bool isDisabled = false;
+                              if (isToday && slotFromTime.isBefore(now)) {
+                                isDisabled = true;
+                              }
+
+                              return RadioListTile<String>(
                                 value: slot,
                                 groupValue: selectedSlot,
-                                title: Text(slot),
+                                title: Text(
+                                  slot + (isDisabled ? ' (Past)' : ''),
+                                  style: TextStyle(
+                                    color: isDisabled ? Colors.grey : null,
+                                  ),
+                                ),
                                 activeColor: Colors.deepPurple,
-                                onChanged: (value) {
+                                onChanged: isDisabled
+                                    ? null
+                                    : (value) {
                                   setState(() {
                                     selectedSlot = value;
                                   });
                                 },
-                              ),
-                            ),
+                              );
+                            }))
+                          ],
+
+
+
                           if (selectedSlot != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 12.0),
