@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import '../models/get_properties_model.dart';
 import '../models/get_review_model.dart';
 import '../models/review_model.dart';
 import '../providers/auth.dart';
@@ -11,7 +12,7 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
 
   ReviewsNotifier(this.ref) : super(const AsyncValue.loading());
 
-  Future<void> fetchReviews() async {
+  Future<void> fetchReviews(Hall hall) async {
     state = const AsyncValue.loading();
 
     try {
@@ -65,7 +66,7 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
                   if (property.halls != null) {
                     for (var hall in property.halls!) {
                       if (hall.hallId == review.hallId) {
-                        //review.hallName = hall.hallName;
+                        review.hallName = hall.name;
                         review.propertyName = property.propertyName;
                         break;
                       }

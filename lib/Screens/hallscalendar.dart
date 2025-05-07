@@ -9,7 +9,8 @@ class HallsCalendarScreen extends ConsumerStatefulWidget {
   const HallsCalendarScreen({super.key});
 
   @override
-  ConsumerState<HallsCalendarScreen> createState() => _HallsCalendarScreenState();
+  ConsumerState<HallsCalendarScreen> createState() =>
+      _HallsCalendarScreenState();
 }
 
 class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
@@ -26,8 +27,18 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
   // For month/year selection
   late List<String> years;
   final List<String> allMonths = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   late List<String> months;
 
@@ -99,14 +110,14 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       );
 
       await ref.read(hallBookingProvider.notifier).postBooking(
-        id: DateTime.now().millisecondsSinceEpoch,
-        hallId: hall.hallId ?? 0,
-        date: formattedDate,
-        slotFromTime: slotFromTime,
-        slotToTime: slotToTime,
-        isBlocked: true,
-        isPaid: false,
-      );
+            id: DateTime.now().millisecondsSinceEpoch,
+            hallId: hall.hallId ?? 0,
+            date: formattedDate,
+            slotFromTime: slotFromTime,
+            slotToTime: slotToTime,
+            isBlocked: true,
+            isPaid: false,
+          );
 
       if (context.mounted) {
         Navigator.of(context).pop(); // close loading dialog
@@ -185,7 +196,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                     child: CircularProgressIndicator(
                       value: loadingProgress.expectedTotalBytes != null
                           ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
+                              loadingProgress.expectedTotalBytes!
                           : null,
                     ),
                   );
@@ -199,76 +210,403 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
     );
   }
 
+//hall section
   Widget _buildHallFeatures(Hall hall) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Hall Features',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+        Center(
+          child: const Text(
+            'Hall Features',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.deepPurple,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _buildFeatureChip(hall.capacity != null, 'Capacity: ${hall.capacity ?? 0}'),
-            _buildFeatureChip(hall.cctv == true, 'CCTV Available'),
-            _buildFeatureChip(hall.fireAlarm == true, 'Fire Alarm'),
-            _buildFeatureChip(hall.soundSystem == true, 'Sound System'),
-            _buildFeatureChip(hall.wifiAvailable == true, 'WiFi Available'),
-            _buildFeatureChip(hall.projectorAvailable == true, 'Projector'),
-            _buildFeatureChip(hall.microphoneAvailable == true, 'Microphone'),
-            _buildFeatureChip(hall.valetParking == true, 'Valet Parking'),
-            _buildFeatureChip(hall.outsideFood == true, 'Outside Food Allowed'),
-            _buildFeatureChip(hall.allowAlcohol == true, 'Alcohol Allowed'),
-          ],
+        const SizedBox(height: 16),
+
+        // Scrollable container for features
+        Container(
+          height: 350, // Set a fixed height to make it scrollable
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.deepPurple.shade100, width: 1),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Main features section
+                  _buildSectionTitle('Basic Information'),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _buildFeatureItem(
+                          hall.capacity != null && hall.capacity! > 0,
+                          'Capacity: ${hall.capacity ?? 0}',
+                          Icons.chair_outlined),
+                      _buildFeatureItem(
+                        hall.parkingCapacity != null &&
+                            hall.parkingCapacity! > 0,
+                        'Parking: ${hall.parkingCapacity ?? 0}',
+                        Icons.local_parking,
+                      ),
+                      _buildFeatureItem(
+                          hall.floatingCapacity != null &&
+                              hall.floatingCapacity! > 0,
+                          'Floating: ${hall.floatingCapacity ?? 0}',
+                          Icons.man),
+                      _buildFeatureItem(
+                        hall.foodtype != null && hall.foodtype!.isNotEmpty,
+                        'Food: ${hall.foodtype ?? 'Not specified'}',
+                        Icons.restaurant,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+                  _buildSectionTitle('Amenities'),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _buildFeatureItem(
+                        hall.cctv == true,
+                        'CCTV Available',
+                        Icons.videocam,
+                      ),
+                      _buildFeatureItem(
+                        hall.fireAlarm == true,
+                        'Fire Alarm',
+                        Icons.warning,
+                      ),
+                      _buildFeatureItem(
+                        hall.soundSystem == true,
+                        'Sound System',
+                        Icons.volume_up,
+                      ),
+                      _buildFeatureItem(
+                        hall.wifiAvailable == true,
+                        'WiFi Available',
+                        Icons.wifi,
+                      ),
+                      _buildFeatureItem(
+                        hall.projectorAvailable == true,
+                        'Projector',
+                        Icons.video_label,
+                      ),
+                      _buildFeatureItem(
+                        hall.microphoneAvailable == true,
+                        'Microphone',
+                        Icons.mic,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+                  _buildSectionTitle('Policies'),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _buildFeatureItem(
+                        hall.valetParking == true,
+                        'Valet Parking',
+                        Icons.local_parking,
+                      ),
+                      _buildFeatureItem(
+                        hall.outsideFood == true,
+                        'Outside Food',
+                        Icons.fastfood,
+                      ),
+                      _buildFeatureItem(
+                        hall.allowAlcohol == true,
+                        'Alcohol Allowed',
+                        Icons.local_bar,
+                      ),
+                      _buildFeatureItem(
+                        hall.allowOutsideDecorators == true,
+                        'Outside Decorators',
+                        Icons.celebration,
+                      ),
+                      _buildFeatureItem(
+                        hall.allowOutsideDj == true,
+                        'Outside DJ',
+                        Icons.music_note,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+                  _buildSectionTitle('Safety & Security'),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _buildFeatureItem(
+                        hall.emergencyExits != null && hall.emergencyExits! > 0,
+                        'Exits: ${hall.emergencyExits ?? 0}',
+                        Icons.exit_to_app,
+                      ),
+                      _buildFeatureItem(
+                        hall.securityCount != null && hall.securityCount! > 0,
+                        'Security: ${hall.securityCount ?? 0}',
+                        Icons.security,
+                      ),
+                      _buildFeatureItem(
+                        hall.securityLevel != null &&
+                            hall.securityLevel!.isNotEmpty,
+                        'Level: ${hall.securityLevel ?? 'Basic'}',
+                        Icons.shield,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+                  _buildSectionTitle('Staff & Maintenance'),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _buildFeatureItem(
+                        hall.staffCount != null && hall.staffCount! > 0,
+                        'Staff: ${hall.staffCount ?? 0}',
+                        Icons.people_outline,
+                      ),
+                      _buildFeatureItem(
+                        hall.cleaningStaff != null && hall.cleaningStaff! > 0,
+                        'Cleaning: ${hall.cleaningStaff ?? 0}',
+                        Icons.cleaning_services,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+                  _buildSectionTitle('Additional Costs'),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _buildFeatureItem(
+                        hall.cleaningCost != null && hall.cleaningCost! > 0,
+                        'Cleaning: ₹${hall.cleaningCost ?? 0}',
+                        Icons.cleaning_services_outlined,
+                      ),
+                      _buildFeatureItem(
+                        hall.securityCost != null && hall.securityCost! > 0,
+                        'Security: ₹${hall.securityCost ?? 0}',
+                        Icons.security_outlined,
+                      ),
+                      _buildFeatureItem(
+                        hall.decorCost != null && hall.decorCost! > 0,
+                        'Decor: ₹${hall.decorCost ?? 0}',
+                        Icons.brush,
+                      ),
+                      _buildFeatureItem(
+                        hall.additionalServicesCost != null &&
+                            hall.additionalServicesCost! > 0,
+                        'Additional: ₹${hall.additionalServicesCost ?? 0}',
+                        Icons.miscellaneous_services,
+                      ),
+                    ],
+                  ),
+
+                  // Sound system details if available
+                  if (hall.soundSystemDetails != null &&
+                      hall.soundSystemDetails!.isNotEmpty)
+                    _buildDetailSection(
+                      'Sound System Details',
+                      hall.soundSystemDetails!,
+                      Icons.music_note,
+                    ),
+
+                  // Lighting system details if available
+                  if (hall.lightingSystemDetails != null &&
+                      hall.lightingSystemDetails!.isNotEmpty)
+                    _buildDetailSection(
+                      'Lighting System Details',
+                      hall.lightingSystemDetails!,
+                      Icons.light,
+                    ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildFeatureChip(bool isAvailable, String label) {
-    return Chip(
-      label: Text(label),
-      backgroundColor: isAvailable ? Colors.green[100] : Colors.grey[300],
-      labelStyle: TextStyle(
-        color: isAvailable ? Colors.green[800] : Colors.grey[600],
-        fontSize: 12,
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.deepPurple.shade800,
+        ),
       ),
     );
   }
 
+  Widget _buildDetailSection(String title, String details, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle(title),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green.shade200),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, color: Colors.green[800]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    details,
+                    style: TextStyle(
+                      color: Colors.green[900],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(bool isAvailable, String label, IconData icon) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: isAvailable
+            ? LinearGradient(
+                colors: [Colors.green.shade50, Colors.green.shade100],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : LinearGradient(
+                colors: [Colors.red.shade50, Colors.red.shade100],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: isAvailable
+            ? [
+                BoxShadow(
+                  color: Colors.green.shade100.withOpacity(0.5),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.red.shade100.withOpacity(0.5),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
+              ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            margin: const EdgeInsets.only(left: 8, right: 4),
+            decoration: BoxDecoration(
+              color: isAvailable
+                  ? Colors.green.withOpacity(0.15)
+                  : Colors.red.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: isAvailable ? Colors.green.shade800 : Colors.red.shade800,
+            ),
+          ),
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color:
+                      isAvailable ? Colors.green.shade800 : Colors.red.shade800,
+                  fontWeight: isAvailable ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+//price
   Widget _buildPriceInfo(Hall hall) {
     return Row(
+      // mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.monetization_on, color: Colors.amber[700]),
+        //Icon(Icons.monetization_on, color: Colors.amber[700]),
+        Text(
+          'Price : ',
+          style: TextStyle(
+            color: Colors.deepPurple,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
         const SizedBox(width: 4),
         Text(
           '₹${hall.price ?? 0}',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontWeight: FontWeight.w400,
+            fontSize: 16,
             color: Colors.amber[700],
           ),
         ),
-        const Spacer(),
-        if (hall.parkingCapacity != null && hall.parkingCapacity! > 0)
-          Row(
-            children: [
-              const Icon(Icons.local_parking, color: Colors.blue),
-              const SizedBox(width: 4),
-              Text(
-                'Parking: ${hall.parkingCapacity}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
       ],
     );
   }
@@ -285,9 +623,9 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                 isExpanded: true,
                 items: years
                     .map((year) => DropdownMenuItem(
-                  value: year,
-                  child: Center(child: Text(year)),
-                ))
+                          value: year,
+                          child: Center(child: Text(year)),
+                        ))
                     .toList(),
                 onChanged: (value) {
                   setState(() {
@@ -310,9 +648,9 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                 isExpanded: true,
                 items: months
                     .map((month) => DropdownMenuItem(
-                  value: month,
-                  child: Center(child: Text(month)),
-                ))
+                          value: month,
+                          child: Center(child: Text(month)),
+                        ))
                     .toList(),
                 onChanged: (value) {
                   setState(() {
@@ -353,8 +691,9 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
               selectedSlot = null; // Reset selected slot
 
               final slots = hall.slots?.map((slot) {
-                return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
-              }).toList() ?? [];
+                    return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
+                  }).toList() ??
+                  [];
 
               hallTimeSlots[selectedIndex!] = slots;
             });
@@ -464,7 +803,8 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                     selectedDay!.month == now.month &&
                     selectedDay!.day == now.day;
 
-                final slotFromTimeStr = slot.split('From: ')[1].split(' To: ')[0];
+                final slotFromTimeStr =
+                    slot.split('From: ')[1].split(' To: ')[0];
                 final slotFromTime = _parseTime(slotFromTimeStr, selectedDay!);
 
                 bool isDisabled = isToday && slotFromTime.isBefore(now);
@@ -483,10 +823,10 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                   onChanged: isDisabled
                       ? null
                       : (value) {
-                    setState(() {
-                      selectedSlot = value;
-                    });
-                  },
+                          setState(() {
+                            selectedSlot = value;
+                          });
+                        },
                 );
               }).toList(),
             ),
@@ -558,111 +898,119 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       ),
       body: halls.isNotEmpty
           ? Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ListView.builder(
-          itemCount: halls.length,
-          itemBuilder: (context, index) {
-            final hall = halls[index];
-            final isSelected = selectedIndex == index;
+              padding: const EdgeInsets.all(8.0),
+              child: ListView.builder(
+                itemCount: halls.length,
+                itemBuilder: (context, index) {
+                  final hall = halls[index];
+                  final isSelected = selectedIndex == index;
 
-            return Column(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedIndex = isSelected ? null : index;
-                      selectedSlot = null; // Reset selected slot
-                      if (!isSelected && hall.slots != null) {
-                        final slots = hall.slots!.map((slot) {
-                          return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
-                        }).toList();
-                        hallTimeSlots[index] = slots;
-                      }
-                    });
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.deepPurple[50],
-                      border: Border.all(color: Colors.deepPurple.shade200, width: 1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildImageGallery(hall),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              hall.name ?? 'No Hall Name',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                if (hall.images != null && hall.images!.isNotEmpty)
+                  return Column(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedIndex = isSelected ? null : index;
+                            selectedSlot = null; // Reset selected slot
+                            if (!isSelected && hall.slots != null) {
+                              final slots = hall.slots!.map((slot) {
+                                return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
+                              }).toList();
+                              hallTimeSlots[index] = slots;
+                            }
+                          });
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurple[50],
+                            border: Border.all(
+                                color: Colors.deepPurple.shade200, width: 1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildImageGallery(hall),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
                                   Text(
-                                    '${hall.images!.length} photos',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 12,
+                                    hall.name ?? 'No Hall Name',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
                                     ),
                                   ),
-                                const SizedBox(width: 8),
-                                Icon(
-                                  isSelected ? Icons.expand_less : Icons.expand_more,
-                                  color: Colors.deepPurple,
-                                ),
-                              ],
-                            ),
-                          ],
+                                  Row(
+                                    children: [
+                                      // if (hall.images != null &&
+                                      //     hall.images!.isNotEmpty)
+                                      //   Text(
+                                      //     '${hall.images!.length} photos',
+                                      //     style: TextStyle(
+                                      //       color: Colors.grey[600],
+                                      //       fontSize: 12,
+                                      //     ),
+                                      //   ),
+                                      _buildPriceInfo(hall),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        isSelected
+                                            ? Icons.expand_less
+                                            : Icons.expand_more,
+                                        color: Colors.deepPurple,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              // _buildPriceInfo(hall),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        _buildPriceInfo(hall),
-                      ],
-                    ),
-                  ),
-                ),
-                if (isSelected)
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    padding: const EdgeInsets.all(16),
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.deepPurple.shade100),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+                      ),
+                      if (isSelected)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.all(16),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border:
+                                Border.all(color: Colors.deepPurple.shade100),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHallFeatures(hall),
+                              const Divider(height: 32),
+                              _buildCalendarSection(hall),
+                              _buildTimeSlots(hall),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHallFeatures(hall),
-                        const Divider(height: 32),
-                        _buildCalendarSection(hall),
-                        _buildTimeSlots(hall),
-                      ],
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      )
+                    ],
+                  );
+                },
+              ),
+            )
           : const Center(
-        child: Text('No halls found for this property'),
-      ),
+              child: Text('No halls found for this property'),
+            ),
     );
   }
 }

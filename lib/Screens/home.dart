@@ -31,7 +31,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.read(propertyNotifierProvider.notifier).getproperty();
     ref.read(subscriptionProvider.notifier).fetchSubscriptions();
-    ref.read(reviewsProvider.notifier).fetchReviews(); // Fetch reviews
+    ref.read(reviewsProvider.notifier).fetchReviews(Hall()); // Fetch reviews
   }
 
   Future<void> GetData() async {
