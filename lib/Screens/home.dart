@@ -1,7 +1,6 @@
 // ignore_for_file: unused_import
 
 import 'dart:convert';
-
 import 'package:bb_user/Screens/review.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,9 +9,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Colors/coustcolors.dart';
 import '../Providers/property.dart';
+import '../Providers/get_review_provider.dart'; // Import the reviews provider
 import '../Providers/subscribed_provider.dart';
 import '../Providers/venues_provider.dart';
 import '../models/get_properties_model.dart';
+import '../models/get_review_model.dart'; // Import the Review model
 import '../utils/bbapi.dart';
 import 'venudetails.dart';
 
@@ -27,10 +28,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     GetData();
-    ref.read(propertyprovider.notifier).getProperties();
-    // Add these to fetch subscribed properties
+
     ref.read(propertyNotifierProvider.notifier).getproperty();
     ref.read(subscriptionProvider.notifier).fetchSubscriptions();
+    ref.read(reviewsProvider.notifier).fetchReviews(); // Fetch reviews
   }
 
   Future<void> GetData() async {
@@ -46,8 +47,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String sUsername = "Abc";
   @override
   Widget build(BuildContext context) {
-    final propertyState = ref.watch(propertyprovider);
-
     // Add this to watch subscribed properties
     final subscribedPropertyState =
         ref.watch(propertyNotifierProvider).data ?? [];
@@ -76,7 +75,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final bIndex = sortedPropertyIds.indexOf(b.propertyId!);
       return aIndex.compareTo(bIndex);
     });
-
+    final reviewsState = ref.watch(reviewsProvider);
     return Scaffold(
       backgroundColor: CoustColors.colrFill,
       body: Column(
@@ -244,37 +243,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                   Padding(
-                    padding: EdgeInsets.only(left: 20.0, right: 20, top: 5),
-                    child: Text('Testimonial',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                  ),
-                  Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 20.0, vertical: 5.0),
-                    child: Container(
-                      color: Colors.white,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                              'Banquet Bookz: Event planning made easy! Love the intuitive design.',
-                              textAlign: TextAlign.center),
-                          SizedBox(height: 8),
-                          Text('Kristin Watson',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(
-                                5,
-                                (index) => Icon(Icons.star,
-                                    color: Colors.amber, size: 16)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Padding(
                     padding: const EdgeInsets.only(top: 20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,93 +256,156 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         SizedBox(height: 10),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount: reviews.length,
-                          itemBuilder: (context, index) {
-                            final review = reviews[index];
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20.0, vertical: 10.0),
-                              child: Column(
-                                children: [
-                                  Row(
+                        reviewsState.when(
+                          loading: () =>
+                              Center(child: CircularProgressIndicator()),
+                          error: (error, stackTrace) => Center(
+                            child: Text('Error loading reviews: $error',
+                                style: TextStyle(color: Colors.red)),
+                          ),
+                          data: (reviews) {
+                            if (reviews.isEmpty) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20.0),
+                                  child: Text('No reviews available',
+                                      style: TextStyle(color: Colors.grey)),
+                                ),
+                              );
+                            }
+
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: NeverScrollableScrollPhysics(),
+                              itemCount: reviews.length,
+                              itemBuilder: (context, index) {
+                                final review = reviews[index];
+                                final venueName = review.propertyName ??
+                                    review.hallName ??
+                                    'Unknown Venue';
+                                final venueType = review.propertyId != null
+                                    ? 'Property'
+                                    : 'Hall';
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20.0, vertical: 10.0),
+                                  child: Column(
                                     children: [
-                                      Image.asset(
-                                        review['imageAsset'],
-                                        height: 50,
-                                        width: 50,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                          return Icon(Icons.error);
-                                        },
-                                      ),
-                                      SizedBox(width: 15),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              review['venueName'],
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            height: 50,
+                                            width: 50,
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[200],
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
-                                            Text(
-                                              review['heading'],
-                                              style: TextStyle(
-                                                  fontStyle: FontStyle.italic),
+                                            child: Icon(
+                                              review.propertyId != null
+                                                  ? Icons.apartment
+                                                  : Icons.meeting_room,
+                                              color: CoustColors
+                                                  .colrHighlightedText,
                                             ),
-                                            Text(
-                                              'User: ${review['userName']}',
-                                              style:
-                                                  TextStyle(color: Colors.grey),
-                                            ),
-                                            Row(
+                                          ),
+                                          SizedBox(width: 15),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                Icon(Icons.star,
-                                                    color: Colors.orange,
-                                                    size: 16),
-                                                SizedBox(width: 5),
-                                                Text('${review['rating']} / 5'),
+                                                Text(
+                                                  venueName,
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold),
+                                                ),
+                                                Text(
+                                                  '$venueType Review',
+                                                  style: TextStyle(
+                                                      fontStyle:
+                                                          FontStyle.italic),
+                                                ),
+                                                Text(
+                                                  'User ID: ${review.userId}',
+                                                  style: TextStyle(
+                                                      color: Colors.grey),
+                                                ),
+                                                Row(
+                                                  children: [
+                                                    Row(
+                                                      children:
+                                                          List.generate(5, (i) {
+                                                        return Icon(
+                                                          i < review.rating
+                                                              ? Icons.star
+                                                              : Icons
+                                                                  .star_border,
+                                                          color: Colors.orange,
+                                                          size: 16,
+                                                        );
+                                                      }),
+                                                    ),
+                                                    SizedBox(width: 5),
+                                                    Text(
+                                                        '${review.rating} / 5'),
+                                                  ],
+                                                ),
+                                                SizedBox(height: 5),
+                                                Text(
+                                                  review.reviewText,
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
                                               ],
                                             ),
-                                            SizedBox(height: 5),
-                                            Text(
-                                              review['comment'],
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 10),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text('Review Details'),
+                                              content: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text('Venue: $venueName',
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold)),
+                                                  Text('Type: $venueType'),
+                                                  Text(
+                                                      'Rating: ${review.rating}/5'),
+                                                  SizedBox(height: 10),
+                                                  Text('Review:'),
+                                                  SizedBox(height: 5),
+                                                  Text(review.reviewText),
+                                                ],
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: Text('Close'),
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
+                                          );
+                                        },
+                                        child: Text('View Details'),
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 10),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: Text('Details'),
-                                          content: Text(
-                                              'Details for ${review['venueName']} by ${review['userName']}'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              child: Text('Close'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                    child: Text('View Details'),
-                                  ),
-                                ],
-                              ),
+                                );
+                              },
                             );
                           },
                         ),
@@ -389,37 +420,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-
-  // Sample review data
-  final List<Map<String, dynamic>> reviews = [
-    {
-      'imageAsset': 'assets/hotel_image4.jpeg',
-      'venueName': 'Swagath Grand',
-      'userName': 'User name',
-      'rating': 4.5,
-      'comment':
-          'Phasellus accumsan imperdiet tempor. Cras tincidunt, arcu nec eleifend porttitor, orci est vehicula.',
-      'heading': 'Excellent Venue!'
-    },
-    {
-      'imageAsset': 'assets/hotel_image5.jpeg',
-      'venueName': 'Swagath Grand',
-      'userName': 'User name',
-      'rating': 4.5,
-      'comment':
-          'Phasellus accumsan imperdiet tempor. Cras tincidunt, arcu nec eleifend porttitor, orci est vehicula.',
-      'heading': 'Amazing Service!'
-    },
-    {
-      'imageAsset': 'assets/hotel_image6.jpeg',
-      'venueName': 'Swagath Grand',
-      'userName': 'User name',
-      'rating': 4.5,
-      'comment':
-          'Phasellus accumsan imperdiet tempor. Cras tincidunt, arcu nec eleifend porttitor, orci est vehicula.',
-      'heading': 'Memorable Experience'
-    },
-  ];
 }
 
 // Add this new widget for horizontal property cards
@@ -509,33 +509,6 @@ class PropertyHorizontalCard extends StatelessWidget {
     );
   }
 }
-
-// class Section extends StatelessWidget {
-//   final String title;
-//   final List<Item> items;
-//
-//   Section({required this.title, required this.items});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         Text(
-//           title,
-//           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-//         ),
-//         SizedBox(height: 20),
-//         SingleChildScrollView(
-//           scrollDirection: Axis.horizontal,
-//           child: Row(
-//             children: items.map((item) => ItemWidget(item: item)).toList(),
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-// }
 
 class Item {
   final String name;
