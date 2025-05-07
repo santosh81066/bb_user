@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,11 +19,15 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
   HallBookingNotifier(this.ref) : super(const AsyncValue.data(null));
 
   Future<void> postBooking({
+    required int id,
     required int hallId,
     required String date,
     required String slotFromTime,
     required String slotToTime,
+    required bool isBlocked,
+    required bool isPaid,
   }) async {
+    print('///////////$isBlocked,$isPaid');
     state = const AsyncValue.loading();
 
     try {
@@ -53,11 +59,14 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
 
       // Create booking request
       final booking = HallBookingRequest(
+        id: DateTime.now().millisecondsSinceEpoch,
         hallId: hallId,
         userId: userId,
         date: date,
         slotFromTime: slotFromTime,
         slotToTime: slotToTime,
+        isBlocked: isBlocked ? 1 : 0,
+        isPaid: isPaid ? 1 : 0,
       );
 
       // Print the request for debugging
@@ -83,7 +92,7 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
       // Print the response for debugging
       print("Response status code: ${response.statusCode}");
       print("Response body: ${response.body}");
-
+      print('///////////$isBlocked,$isPaid');
       if (response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
         print("Booking successful: ${responseData['messages']}");

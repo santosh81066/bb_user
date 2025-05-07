@@ -84,7 +84,7 @@ class bookingNotifier extends StateNotifier<AsyncValue<List<BookingState>>> {
       if (response.statusCode == 201) {
         print("Response 200");
         showDialog(
-          context: context!,
+          context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Success'),

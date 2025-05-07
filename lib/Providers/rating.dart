@@ -39,7 +39,7 @@ class RatingNotifier extends StateNotifier<AsyncValue<List<RatingState>>> {
         case 201:
           print('success');
           showDialog(
-            context: context!,
+            context: context,
             builder: (BuildContext context) {
               return AlertDialog(
                 title: const Text('Success'),
@@ -62,7 +62,7 @@ class RatingNotifier extends StateNotifier<AsyncValue<List<RatingState>>> {
           break;
         case 400:
           showDialog(
-              context: context!,
+              context: context,
               builder: (BuildContext context) {
                 return AlertDialog(
                   title: const Text('Failed'),

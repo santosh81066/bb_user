@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'dart:convert';
 import 'package:bb_user/Providers/venues_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,7 +84,7 @@ class GetHallBookingNotifier
                 if (property.halls != null) {
                   for (var hall in property.halls!) {
                     if (hall.hallId == booking.hallId) {
-                      booking.hallName = hall.hallName;
+                      booking.hallName = hall.name;
                       booking.propertyName = property.propertyName;
                       break;
                     }

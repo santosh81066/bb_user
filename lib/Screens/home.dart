@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'dart:convert';
 
 import 'package:bb_user/Screens/review.dart';
@@ -589,6 +591,7 @@ class QuickAccessCard extends StatelessWidget {
             Navigator.of(context).pushNamed('/payment_history');
             break;
           case "Wallets":
+            Navigator.of(context).pushNamed('/wallet');
             break;
         }
       },

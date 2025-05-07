@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -72,7 +74,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         loadingState.state = false;
         print('success');
         showDialog(
-          context: context!,
+          context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Success'),
@@ -94,7 +96,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       case 400:
         loadingState.state = false;
         showDialog(
-            context: context!,
+            context: context,
             builder: (BuildContext context) {
               return AlertDialog(
                 title: const Text('Failed'),
@@ -144,7 +146,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         loadingState.state = false;
         print('success');
         showDialog(
-          context: context!,
+          context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Error'),
@@ -217,7 +219,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         loadingState.state = false;
         print('success');
         showDialog(
-          context: context!,
+          context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Error'),
@@ -239,7 +241,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       case 500:
         loadingState.state = false;
         showDialog(
-          context: context!,
+          context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Error'),
@@ -521,7 +523,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         loadingState.state = false;
         print('success');
         showDialog(
-          context: context!,
+          context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Error'),
@@ -543,7 +545,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       case 500:
         loadingState.state = false;
         showDialog(
-          context: context!,
+          context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Error'),

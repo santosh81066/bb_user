@@ -22,7 +22,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.bbuser"
-    compileSdk = 34// Specify the correct compileSdkVersion
+    compileSdk = 35// Specify the correct compileSdkVersion
 
     defaultConfig {
         applicationId = "com.bbuser"

@@ -1,4 +1,7 @@
+// ignore_for_file: unused_import
+
 import 'package:bb_user/Colors/coustcolors.dart';
+import 'package:bb_user/Screens/review.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -145,11 +148,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void payment_history() {
-    Navigator.pushNamed(context, '/payment_history');
+    Navigator.pushNamed(context, '/payment');
   }
 
   void notification_settings() {
     Navigator.pushNamed(context, '/notification_settings');
+  }
+  void Walllet() {
+    Navigator.pushNamed(context, '/wallet');
+  }
+
+  void review() {
+    Navigator.pushNamed(context, '/review');
   }
 
   @override
@@ -231,7 +241,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             height: 20,
                           ),
                           TextButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                Walllet();
+                              },
                               child: const Text(
                                 "Walllet",
                                 style: TextStyle(
@@ -264,7 +276,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             height: 20,
                           ),
                           TextButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                review();
+                              },
                               child: const Text(
                                 "Leave Review",
                                 style: TextStyle(

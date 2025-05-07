@@ -11,11 +11,13 @@ import 'Screens/login.dart';
 import 'Screens/managebooking.dart';
 import 'Screens/notificationsettings.dart';
 import 'Screens/paymenthistory.dart';
+import 'Screens/paymentpage.dart';
 import 'Screens/profilesettings.dart';
 import 'Screens/registration.dart';
 import 'Screens/review.dart';
 import 'Screens/settings.dart';
 import 'Screens/upcoming.dart';
+import 'Screens/walletscreen.dart';
 import 'Widgets/bottomnavigation.dart';
 
 void main() async {
@@ -80,25 +82,31 @@ class MyApp extends ConsumerWidget {
           return CoustNavigation();
         },
         '/profile_settings': (BuildContext context) {
-          return ProfileSetingsScreen();
+          return const ProfileSetingsScreen();
         },
         '/payment_history': (BuildContext context) {
-          return PaymenthistoryScreen();
+          return const PaymenthistoryScreen();
         },
         '/notification_settings': (BuildContext context) {
           return NotificationSettingsScreen();
         },
         '/manage_booking': (BuildContext context) {
-          return ManageBookingScreen();
+          return const ManageBookingScreen();
         },
         '/upcoming_booking': (BuildContext context) {
-          return UpcomingbookingsScreen();
+          return const UpcomingbookingsScreen();
+        },
+        '/wallet': (BuildContext context) {
+          return const WalletScreen();
         },
         '/location': (BuildContext context) {
-          return LocationScreen();
+          return const LocationScreen();
         },
         '/venue_details': (BuildContext context) {
-          return HallsCalendarScreen();
+          return const HallsCalendarScreen();
+        },
+        '/payment': (BuildContext context) {
+          return const PaymentPage();
         },
         '/home': (BuildContext context) {
           return const HomeScreen();
@@ -107,7 +115,7 @@ class MyApp extends ConsumerWidget {
           return const SettingsScreen();
         },
         '/review': (BuildContext context) {
-          return ReviewPage();
+          return const ReviewPage();
         },
       },
     );
@@ -140,7 +148,7 @@ class _AuthCheckScreenState extends ConsumerState<_AuthCheckScreen> {
           return const Center(child: CircularProgressIndicator());
         } else {
           // Based on auto-login result, navigate to appropriate screen
-          return snapshot.data == true ? CoustNavigation() : LoginScreen();
+          return snapshot.data == true ? CoustNavigation() : const LoginScreen();
         }
       },
     );
