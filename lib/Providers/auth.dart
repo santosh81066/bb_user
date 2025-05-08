@@ -19,30 +19,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
 
     if (!prefs.containsKey('userData')) {
-      print('No userData found in SharedPreferences');
       return false;
     }
 
     final userDataString = prefs.getString('userData');
     if (userDataString == null || userDataString.isEmpty) {
-      print('userData is empty in SharedPreferences');
       return false;
     }
 
     try {
       final extractData = json.decode(userDataString) as Map<String, dynamic>;
-      print('Retrieved userData: $extractData'); // Debugging print
+      // Debugging print
 
       // Update the state with the retrieved data
       state = AuthState.fromJson(extractData);
 
       // Verify state was updated
-      print(
-          'State after update - token: ${state.token}, userId: ${state.userId}, username: ${state.username}');
 
       return true;
     } catch (e) {
-      print('Error during auto login: $e');
       return false;
     }
   }
@@ -65,14 +60,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
           "mobile_no": phonenum!,
           "password": password!
         }));
-    print("username: $username!");
     var userDetails = json.decode(response.body);
-    print('booking response:$userDetails');
-    print('booking response Status Code:${response.statusCode}');
     switch (response.statusCode) {
       case 201:
         loadingState.state = false;
-        print('success');
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -119,7 +110,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> numCheck(
       BuildContext context, String? phonenum, WidgetRef ref) async {
     const url = Bbapi.mobilecheck;
-    print("NumCheck${phonenum}");
     final prefs = await SharedPreferences.getInstance();
     final loadingState = ref.read(loadingProvider2.notifier);
     loadingState.state = true;
@@ -129,13 +119,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
               'application/json', // Set the content type to application/json
         },
         body: json.encode({"mobile_no": phonenum}));
-    print("username: $phonenum");
     var userDetails = json.decode(response.body);
-    print('booking response:$userDetails');
     switch (response.statusCode) {
       case 200:
         // loadingState.state = false;
-        print('success');
         ref.read(enablepasswaorProvider.notifier).state = true;
         ref
             .read(phoneAuthProvider.notifier)
@@ -144,7 +131,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         break;
       case 400:
         loadingState.state = false;
-        print('success');
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -187,13 +173,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
               'application/json', // Set the content type to application/json
         },
         body: json.encode({"access_token": token}));
-    print("verificationId: $verificationId");
     var userDetails = json.decode(response.body);
-    print('booking response:$userDetails');
     switch (response.statusCode) {
       case 200:
         loadingState.state = false;
-        print('success');
         // Extract data from the 'data' key
         final userDataFromServer = userDetails['data'];
         state = state.copyWith(
@@ -213,11 +196,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'user_role': state.usertype,
         });
         await prefs.setString('userData', userData);
-        print('pushNamed //');
         break;
       case 400:
         loadingState.state = false;
-        print('success');
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -315,13 +296,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       var response = await http.Response.fromStream(streamedResponse);
       var userDetails = json.decode(response.body);
 
-      print('Update response: $userDetails');
-      print('Status code: ${response.statusCode}');
 
       switch (response.statusCode) {
         case 200:
           loadingState.state = false;
-          print('Success - Response details: $userDetails');
 
           // Make sure we're extracting the correct data format from the response
           var updatedUsername = userDetails["username"] ?? username;
@@ -329,8 +307,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
           var updatedMobileNo = userDetails["mobile_no"] ?? phonenum;
           var updatedProfilePic = userDetails["profile_pic"];
 
-          print(
-              'Updated values - Username: $updatedUsername, Email: $updatedEmail, Mobile: $updatedMobileNo');
 
           // Update local state with new data
           state = state.copyWith(
@@ -343,8 +319,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
               usertype: usertype);
 
           // Log the state after update
-          print(
-              'State after update: Username: ${state.username}, Email: ${state.email}, Mobile: ${state.mobileno}');
 
           // Save updated data to SharedPreferences
           final userData = json.encode({
@@ -357,13 +331,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
             'user_role': state.usertype,
           });
 
-          print('Saving updated user data: $userData');
           await prefs.setString('userData', userData);
 
           // Verify the data was saved correctly
           final verifyData =
               json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
-          print('Verification - Saved data: $verifyData');
 
           // Show success message
           showDialog(
@@ -455,7 +427,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (prefs.containsKey('userData')) {
       final extractData =
           json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
-      print('Refreshing user data from SharedPreferences: $extractData');
 
       // Force state update with refreshed data
       state = AuthState.fromJson(extractData);
@@ -473,7 +444,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> loginmail(BuildContext context, String? username,
       String? password, WidgetRef ref) async {
     const url = Bbapi.login_mail;
-    print("entered login function $password");
     final prefs = await SharedPreferences.getInstance();
     final loadingState = ref.read(loadingProvider2.notifier);
     loadingState.state = true;
@@ -489,15 +459,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         }));
 
     var userDetails = json.decode(response.body);
-    print('login response:$userDetails');
     switch (response.statusCode) {
       case 200:
         loadingState.state = false;
-        print('success');
         // Extract data from the 'data' key in the response
         final userDataFromServer = userDetails['data'];
-        print(
-            "user_id type: ${userDetails["user_id"].runtimeType}, value: ${userDetails["user_id"]}");
         state = state.copyWith(
           userId: userDataFromServer["user_id"] as int?, // Cast to int
           token: userDataFromServer["access_token"] as String?,
@@ -516,12 +482,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'user_role': state.usertype,
         });
         await prefs.setString('userData', userData);
-        print('pushNamed //');
         Navigator.of(context).pushNamed('/welcome');
         break;
       case 400:
         loadingState.state = false;
-        print('success');
         showDialog(
           context: context,
           builder: (BuildContext context) {

@@ -33,7 +33,6 @@ final TextEditingController _edtxtConfirmPassword = TextEditingController();
 final TextEditingController _edtxtNum = TextEditingController();
   
 
-  final _validationKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
    File? _profileImage;
 
@@ -258,6 +257,7 @@ Future<void> _pickImage(BuildContext context, ImageSource source) async {
                                   if (value != _edtxtPassword.text.trim()) {
                                     return 'Passwords do not match';
                                   }
+                                  return null;
                                   // return null;
                                 },
                               ),

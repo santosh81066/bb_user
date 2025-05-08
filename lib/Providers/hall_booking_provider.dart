@@ -1,15 +1,11 @@
-// ignore_for_file: unused_import
-
 import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../models/hall_booking.dart';
-import '../models/authstate.dart';
 import '../providers/auth.dart';
 
 final hallBookingProvider =
-    StateNotifierProvider<HallBookingNotifier, AsyncValue<void>>((ref) {
+StateNotifierProvider<HallBookingNotifier, AsyncValue<void>>((ref) {
   return HallBookingNotifier(ref);
 });
 
@@ -27,61 +23,38 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
     required bool isBlocked,
     required bool isPaid,
   }) async {
-    print('///////////$isBlocked,$isPaid');
     state = const AsyncValue.loading();
 
     try {
-      // Get the auth state from the provider
       final authState = ref.read(authprovider);
-
-      // Debug prints to verify auth state
-      print("Auth state: ${authState.toJson()}");
-
-      // Try to auto-login if no userId is found
       int? userId = authState.userId;
+
       if (userId == null) {
-        // Attempt to refresh auth state with auto-login
-        print("User ID is null, attempting to auto-login");
         final authNotifier = ref.read(authprovider.notifier);
         final autoLoginSuccess = await authNotifier.tryAutoLogin();
-        print("Auto-login success: $autoLoginSuccess");
-
-        // Get the updated auth state
-        final updatedAuthState = ref.read(authprovider);
-        userId = updatedAuthState.userId;
-        print("Updated auth state userId: $userId");
+        userId = ref.read(authprovider).userId;
+        if (userId == null) throw Exception('User ID not found.');
       }
 
-      // Check if userId exists after auto-login attempt
-      if (userId == null) {
-        throw Exception('User ID not found. Please log in again.');
-      }
+      final bookingStatus = isPaid
+          ? BookingStatus.confirmed
+          : (isBlocked ? BookingStatus.blocked : BookingStatus.available);
 
-      // Create booking request
       final booking = HallBookingRequest(
-        id: DateTime.now().millisecondsSinceEpoch,
+        id: id, // Unique per booking attempt
         hallId: hallId,
         userId: userId,
         date: date,
         slotFromTime: slotFromTime,
         slotToTime: slotToTime,
-        isBlocked: isBlocked ? 1 : 0,
-        isPaid: isPaid ? 1 : 0,
+        isPaid: bookingStatusToCode(bookingStatus), // 'b', 'c', '0'
       );
 
-      // Print the request for debugging
-      print("Booking request: ${booking.toJson()}");
-
-      // Get token for authorization header
       final token = authState.token;
-      final Map<String, String> headers = {
+      final headers = {
         'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
       };
-
-      // Add authorization token if available
-      if (token != null && token.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $token';
-      }
 
       final response = await http.post(
         Uri.parse('https://www.gocodedesigners.com/hallbooking'),
@@ -89,30 +62,94 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
         body: jsonEncode(booking.toJson()),
       );
 
-      // Print the response for debugging
-      print("Response status code: ${response.statusCode}");
-      print("Response body: ${response.body}");
-      print('///////////$isBlocked,$isPaid');
-      if (response.statusCode == 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
-        print("Booking successful: ${responseData['messages']}");
+        print("Booking response: ${responseData['messages']}");
         state = const AsyncValue.data(null);
       } else {
-        try {
-          final responseData = jsonDecode(response.body);
-          final messages = responseData['messages'];
-          throw Exception(messages is List
-              ? messages.join(', ')
-              : (messages ?? 'Booking failed'));
-        } catch (decodeError) {
-          throw Exception(
-              'Booking failed with status code ${response.statusCode}');
-        }
+        final responseData = jsonDecode(response.body);
+        final messages = responseData['messages'];
+        throw Exception(messages is List
+            ? messages.join(', ')
+            : (messages ?? 'Booking failed'));
       }
     } catch (e, st) {
-      print("Booking error: $e");
       state = AsyncValue.error(e, st);
       rethrow;
     }
   }
+
+
+  // ✅ New Method: Count blocked & confirmed slots by hall ID
+  Future<Map<String, int>> countSlotStatuses(int hallId) async {
+    final authState = ref.read(authprovider);
+    final headers = {
+      'Authorization': 'Bearer ${authState.token}',
+      'Content-Type': 'application/json',
+    };
+
+    final response = await http.get(
+      Uri.parse('https://www.gocodedesigners.com/hallbooking?hall_id=$hallId'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = jsonDecode(response.body);
+      final messages = jsonResponse['messages'] as List;
+
+      int blockedCount = 0;
+      int confirmedCount = 0;
+
+      for (var messageList in messages) {
+        for (var booking in messageList) {
+          final status = booking['is_paid'];
+          if (status == 'b') blockedCount++;
+          if (status == 'c') confirmedCount++;
+        }
+      }
+
+      return {
+        'blocked': blockedCount,
+        'confirmed': confirmedCount,
+      };
+    } else {
+      throw Exception('Failed to fetch slot status counts');
+    }
+  }
+  Future<int> countUniqueBlockedUsersPerDay(int hallId) async {
+    final authState = ref.read(authprovider);
+    final headers = {
+      'Authorization': 'Bearer ${authState.token}',
+      'Content-Type': 'application/json',
+    };
+
+    final response = await http.get(
+      Uri.parse('https://www.gocodedesigners.com/hallbooking?hall_id=$hallId'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = jsonDecode(response.body);
+      final messages = jsonResponse['messages'] as List;
+
+      final Set<String> uniqueUserDateCombos = {};
+
+      for (var messageList in messages) {
+        for (var booking in messageList) {
+          final userId = booking['user_id'];
+          final date = booking['date'];
+          final status = booking['is_paid'];
+
+          if (status == 'b' && userId != null && date != null) {
+            uniqueUserDateCombos.add('$userId-$date');
+          }
+        }
+      }
+
+      return uniqueUserDateCombos.length;
+    } else {
+      throw Exception('Failed to count unique blocked users');
+    }
+  }
+
 }

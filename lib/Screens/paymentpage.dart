@@ -18,13 +18,40 @@ class _PaymentPageState extends State<PaymentPage> {
   final TextEditingController _mobileController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-
+  late int? hallId;
+  late String date;
+  late String slotFromTime;
+  late String slotToTime;
+  late String? hallName;
+  late int? price;
+  late Function(bool)? onPaymentSuccess;
   @override
   void initState() {
     super.initState();
     _initializeRazorpay();
+    _descriptionController.text = "Banquet Booking Payment";
   }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
+    // Extract arguments
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+    if (args != null) {
+      hallId = args['hallId'];
+      date = args['date'] ?? '';
+      slotFromTime = args['slotFromTime'] ?? '';
+      slotToTime = args['slotToTime'] ?? '';
+      hallName = args['hallName'];
+      price = args['price'] ?? 0;
+      onPaymentSuccess = args['onPaymentSuccess'];
+
+      // Set a more descriptive payment description
+      if (hallName != null) {
+        _descriptionController.text = "Booking payment for $hallName on $date from $slotFromTime to $slotToTime";
+      }
+    }
+  }
   @override
   void dispose() {
     _razorpay.clear();
@@ -46,7 +73,11 @@ class _PaymentPageState extends State<PaymentPage> {
       msg: "Payment Successful: ${response.paymentId}",
       toastLength: Toast.LENGTH_SHORT,
     );
-
+    print ("Payment Successful: ${response.paymentId}");
+    print ("Payment Successful: ${response.data}");
+    if (onPaymentSuccess != null) {
+      onPaymentSuccess!(true);
+    }
     Navigator.pop(context);
   }
 
@@ -55,6 +86,9 @@ class _PaymentPageState extends State<PaymentPage> {
       msg: "Payment Failed: ${response.message}",
       toastLength: Toast.LENGTH_SHORT,
     );
+    if (onPaymentSuccess != null) {
+      onPaymentSuccess!(false);
+    }
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
@@ -77,7 +111,7 @@ class _PaymentPageState extends State<PaymentPage> {
       return;
     }
 
-    int amountInPaise = 1 * 100; // ₹150
+    int amountInPaise = (price ?? 1) * 100;
 
     var options = {
       'key': 'rzp_live_4mzpwZrJggHKRm', // Replace with your Razorpay key
@@ -86,6 +120,12 @@ class _PaymentPageState extends State<PaymentPage> {
       'name': 'BANQUETBOOKZ',
       'description': description,
       'prefill': {'contact': mobile, 'email': email},
+      'notes': {
+        'hallId': hallId,
+        'date': date,
+        'slotFromTime': slotFromTime,
+        'slotToTime': slotToTime,
+      },
     };
 
     try {
@@ -98,7 +138,45 @@ class _PaymentPageState extends State<PaymentPage> {
       );
     }
   }
+  void _handleWalletPayment() {
+    // Implement wallet payment logic
+    // Here you would check if the wallet has enough balance
 
+    // For demonstration, let's assume wallet payment is successful
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Payment'),
+        content: Text('Pay ₹${price ?? 0} from your wallet balance?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+
+              // Simulate successful payment
+              Fluttertoast.showToast(
+                msg: "Wallet Payment Successful!",
+                toastLength: Toast.LENGTH_SHORT,
+              );
+
+              // Call the callback function
+              if (onPaymentSuccess != null) {
+                onPaymentSuccess!(true);
+              }
+
+              // Return to previous screen
+              Navigator.pop(context);
+            },
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,33 +206,83 @@ class _PaymentPageState extends State<PaymentPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             Card(
-              elevation: 2,
+              elevation: 3,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              child: const Padding(
-                padding: EdgeInsets.all(16.0),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Payment Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 15),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [Text('Premium Subscription'), Text('₹ 150')],
+                    const Text('Booking Details',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6418C3))),
+                    const SizedBox(height: 10),
+
+                    if (hallName != null)
+                      _buildDetailRow('Hall', hallName!),
+
+                    _buildDetailRow('Date', date),
+                    _buildDetailRow('Time', '$slotFromTime to $slotToTime'),
+
+                    const Divider(height: 20),
+
+                    const Text('Payment Status',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.pending_actions, size: 16, color: Colors.amber[800]),
+                          const SizedBox(width: 6),
+                          Text('Pending Payment',
+                              style: TextStyle(color: Colors.amber[800], fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ),
-                    Divider(height: 25),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Payment Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 15),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Total Amount', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text('₹ 150', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const Text('Hall Booking Fee'),
+                        Text('₹ ${price ?? 0}'),
+                      ],
+                    ),
+                    const Divider(height: 25),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total Amount', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text(
+                          '₹ ${price ?? 0}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
             ),
+
             const SizedBox(height: 20),
             Container(
               width: double.infinity,
@@ -246,6 +374,21 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600])),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
   Widget _buildPaymentMethodOption({
     required bool isSelected,
     required IconData icon,

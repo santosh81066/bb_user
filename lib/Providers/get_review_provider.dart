@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../models/get_properties_model.dart';
 import '../models/get_review_model.dart';
-import '../models/review_model.dart';
 import '../providers/auth.dart';
 import '../Providers/venues_provider.dart';
 

@@ -75,7 +75,6 @@ class _PaymenthistoryScreenState extends State<PaymenthistoryScreen> {
             child: ListView.builder(
                 itemCount: _items.length,
                 itemBuilder: (context, index) {
-                  final item = _items[index];
                   return Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8.0, vertical: 4.0),

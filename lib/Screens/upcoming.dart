@@ -52,7 +52,7 @@ class _UpcomingbookingsScreenState extends State<UpcomingbookingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         "Hall Details",
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -71,17 +71,17 @@ class _UpcomingbookingsScreenState extends State<UpcomingbookingsScreen> {
                       const SizedBox(height: 16.0),
                       Text(
                         sName,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 20, fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 8.0),
+                      const SizedBox(height: 8.0),
                       const Text(
                         'Price',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 8.0),
-                      Row(
+                      const SizedBox(height: 8.0),
+                      const Row(
                         children: [
                           Icon(Icons.location_on, color: Colors.grey),
                           SizedBox(width: 8.0),
@@ -94,8 +94,8 @@ class _UpcomingbookingsScreenState extends State<UpcomingbookingsScreen> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 8.0),
-                      Row(
+                      const SizedBox(height: 8.0),
+                      const Row(
                         children: [
                           Icon(Icons.phone, color: Colors.grey),
                           SizedBox(width: 8.0),
@@ -105,8 +105,8 @@ class _UpcomingbookingsScreenState extends State<UpcomingbookingsScreen> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 8.0),
-                      Row(
+                      const SizedBox(height: 8.0),
+                      const Row(
                         children: [
                           Icon(Icons.email, color: Colors.grey),
                           SizedBox(width: 8.0),
@@ -116,16 +116,16 @@ class _UpcomingbookingsScreenState extends State<UpcomingbookingsScreen> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 8.0),
+                      const SizedBox(height: 8.0),
                       Row(
                         children: [
-                          Icon(Icons.directions, color: Colors.teal),
-                          SizedBox(width: 8.0),
+                          const Icon(Icons.directions, color: Colors.teal),
+                          const SizedBox(width: 8.0),
                           TextButton(
                             onPressed: () {
                               // Handle Get Directions
                             },
-                            child: Text(
+                            child: const Text(
                               'Get Directions',
                               style:
                                   TextStyle(fontSize: 14, color: Colors.teal),
@@ -133,13 +133,13 @@ class _UpcomingbookingsScreenState extends State<UpcomingbookingsScreen> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 16.0),
+                      const SizedBox(height: 16.0),
                     ],
                   ),
                 ),
-                SizedBox(height: 8.0),
+                const SizedBox(height: 8.0),
                 ReviewCard(),
-                SizedBox(height: 16.0),
+                const SizedBox(height: 16.0),
                 CoustEvalButton(
                   onPressed: () {
                     // Handle book

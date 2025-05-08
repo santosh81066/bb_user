@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field, unused_local_variable
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -96,25 +98,6 @@ class _BookVenueScreenState extends ConsumerState<BookVenueScreen> {
     );
   }
 
-  Widget _buildEventsMarker(DateTime date, List events) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.red,
-      ),
-      width: 16.0,
-      height: 16.0,
-      child: Center(
-        child: Text(
-          '${events.length}',
-          style: TextStyle().copyWith(
-            color: Colors.white,
-            fontSize: 12.0,
-          ),
-        ),
-      ),
-    );
-  }
 
   List<String> formatDateList(List<DateTime> dates) {
     final DateFormat formatter = DateFormat('yyyy-MM-dd');
