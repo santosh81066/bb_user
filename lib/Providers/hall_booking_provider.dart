@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../models/hall_booking.dart';
 import '../providers/auth.dart';
+import '../utils/bbapi.dart';
 
 final hallBookingProvider =
 StateNotifierProvider<HallBookingNotifier, AsyncValue<void>>((ref) {
@@ -31,53 +32,119 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
 
       if (userId == null) {
         final authNotifier = ref.read(authprovider.notifier);
-        final autoLoginSuccess = await authNotifier.tryAutoLogin();
+        await authNotifier.tryAutoLogin();
         userId = ref.read(authprovider).userId;
         if (userId == null) throw Exception('User ID not found.');
+      }
+
+      final token = authState.token;
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+
+      // ✅ Use your real endpoint: GET all bookings
+      final getResponse = await http.get(
+        Uri.parse(Bbapi.hallbooking),
+        headers: headers,
+      );
+
+      if (getResponse.statusCode != 200) {
+        throw Exception('Failed to check existing bookings');
+      }
+
+      final bookings = jsonDecode(getResponse.body)['data'] as List;
+      int? existingBookingId;
+
+      for (var booking in bookings) {
+        if (booking['user_id'] == userId &&
+            booking['hall_id'] == hallId &&
+            booking['date'] == date &&
+            booking['slot_from_time'] == slotFromTime &&
+            booking['slot_to_time'] == slotToTime) {
+          existingBookingId = booking['id'];
+          break;
+        }
       }
 
       final bookingStatus = isPaid
           ? BookingStatus.confirmed
           : (isBlocked ? BookingStatus.blocked : BookingStatus.available);
 
+      if (existingBookingId != null) {
+        await updateBookingPaymentStatus(
+          bookingId: existingBookingId,
+          status: bookingStatus,
+        );
+        return;
+      }
+
+      // ➕ No existing booking → POST new
       final booking = HallBookingRequest(
-        id: id, // Unique per booking attempt
+        id: id,
         hallId: hallId,
         userId: userId,
         date: date,
         slotFromTime: slotFromTime,
         slotToTime: slotToTime,
-        isPaid: bookingStatusToCode(bookingStatus), // 'b', 'c', '0'
+        isPaid: bookingStatusToCode(bookingStatus),
       );
 
-      final token = authState.token;
-      final headers = {
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.post(
-        Uri.parse('https://www.gocodedesigners.com/hallbooking'),
+      final postResponse = await http.post(
+        Uri.parse(Bbapi.hallbooking),
         headers: headers,
         body: jsonEncode(booking.toJson()),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
-        print("Booking response: ${responseData['messages']}");
+      if (postResponse.statusCode == 200 || postResponse.statusCode == 201) {
         state = const AsyncValue.data(null);
       } else {
-        final responseData = jsonDecode(response.body);
+        final responseData = jsonDecode(postResponse.body);
         final messages = responseData['messages'];
-        throw Exception(messages is List
-            ? messages.join(', ')
-            : (messages ?? 'Booking failed'));
+        throw Exception(messages is List ? messages.join(', ') : (messages ?? 'Booking failed'));
       }
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       rethrow;
     }
   }
+  Future<void> updateBookingPaymentStatus({
+    required int bookingId,
+    required BookingStatus status,
+  }) async {
+    state = const AsyncValue.loading();
+
+    try {
+      final authState = ref.read(authprovider);
+      final token = authState.token;
+
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+
+      final patchBody = jsonEncode({
+        "booking_id": bookingId,
+        "is_paid": bookingStatusToCode(status),
+      });
+
+      final patchResponse = await http.patch(
+        Uri.parse(Bbapi.hallbooking),
+        headers: headers,
+        body: patchBody,
+      );
+
+      if (patchResponse.statusCode == 200) {
+        state = const AsyncValue.data(null);
+      } else {
+        throw Exception('Failed to update booking payment status');
+      }
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
 
 
   // ✅ New Method: Count blocked & confirmed slots by hall ID
@@ -89,7 +156,7 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
     };
 
     final response = await http.get(
-      Uri.parse('https://www.gocodedesigners.com/hallbooking?hall_id=$hallId'),
+      Uri.parse(Bbapi.hallbooking),
       headers: headers,
     );
 
@@ -124,7 +191,7 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
     };
 
     final response = await http.get(
-      Uri.parse('https://www.gocodedesigners.com/hallbooking?hall_id=$hallId'),
+      Uri.parse(Bbapi.hallbooking),
       headers: headers,
     );
 

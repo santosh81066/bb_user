@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
+import '../utils/bbapi.dart';
+
 // Model for the review request
 class ReviewRequest {
   final String review;
@@ -68,10 +70,10 @@ class ReviewResponse {
 
 // Service class for handling API calls
 class ReviewService {
-  final String baseUrl = 'https://www.gocodedesigners.com';
+
 
   Future<ReviewResponse> submitReview(ReviewRequest reviewRequest) async {
-    final Uri uri = Uri.parse('$baseUrl/bbaddreview');
+    final Uri uri = Uri.parse(Bbapi.bbaddreview);
 
     try {
       var request = http.MultipartRequest('POST', uri);

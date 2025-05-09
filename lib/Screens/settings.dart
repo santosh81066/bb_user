@@ -11,6 +11,7 @@ import 'dart:convert';
 import '../Providers/auth.dart';
 import '../Providers/loaded.dart';
 import '../Widgets/text.dart';
+import '../utils/bbapi.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -50,7 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Make API call to delete account
       final response = await http.delete(
-        Uri.parse('https://www.gocodedesigners.com/bbadminlogin'),
+        Uri.parse(Bbapi.login_mail),
         headers: {
           'Content-Type': 'application/json',
         },

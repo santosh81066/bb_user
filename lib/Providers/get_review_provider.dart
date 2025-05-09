@@ -24,7 +24,7 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
       // Make API request - fixing the endpoint URL
       // Note: The endpoint might be '/getreview' instead of '/bbaddreview'
       final response = await http.get(
-        Uri.parse('https://www.gocodedesigners.com/bbaddreview'),
+        Uri.parse('http://www.gocodedesigners.com/bbaddreview'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${authState.token}',

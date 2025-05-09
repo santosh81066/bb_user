@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../models/get_hall_booking.dart';
 import '../models/get_properties_model.dart';
 import '../providers/auth.dart';
+import '../utils/bbapi.dart';
 
 // Create a class to manage the hall booking state
 class GetHallBookingNotifier
@@ -49,7 +50,7 @@ class GetHallBookingNotifier
 
       // Get booking data
       final response = await http.get(
-        Uri.parse('https://www.gocodedesigners.com/hallbooking'),
+        Uri.parse(Bbapi.hallbooking),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${authState.token}',

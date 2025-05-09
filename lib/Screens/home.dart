@@ -454,7 +454,7 @@ class PropertyHorizontalCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
                 child: Image.network(
-                  'https://www.gocodedesigners.com/banquetbookingz/${property.coverPic}',
+                  'http://www.gocodedesigners.com/banquetbookingz/${property.coverPic}',
                   width: 180,
                   height: 120,
                   fit: BoxFit.cover,

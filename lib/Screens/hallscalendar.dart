@@ -9,6 +9,7 @@ import '../Providers/hall_booking_provider.dart';
 import 'package:intl/intl.dart';
 
 import '../models/hall_booking.dart';
+import '../utils/bbapi.dart';
 
 class HallsCalendarScreen extends ConsumerStatefulWidget {
   const HallsCalendarScreen({super.key});
@@ -81,7 +82,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       };
 
       final response = await http.get(
-        Uri.parse('https://www.gocodedesigners.com/hallbooking'),
+        Uri.parse(Bbapi.hallbooking),
         headers: headers,
       );
 
@@ -238,20 +239,48 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
     final bookingKey = _getBookingKey(hall.hallId ?? 0, date, fromTime, toTime);
 
     try {
-      // Update payment status on the server
-      await ref.read(hallBookingProvider.notifier).postBooking(
-        id: DateTime.now().millisecondsSinceEpoch,
-        hallId: hall.hallId ?? 0,
-        date: date,
-        slotFromTime: fromTime,
-        slotToTime: toTime,
-        isBlocked: true,
-        isPaid: true,
+      final authState = ref.read(authprovider);
+      final headers = {
+        'Authorization': 'Bearer ${authState.token}',
+        'Content-Type': 'application/json',
+      };
+
+      // ✅ Use correct endpoint
+      final response = await http.get(
+        Uri.parse(Bbapi.hallbooking),
+        headers: headers,
       );
 
-      // Update local state
+      if (response.statusCode != 200) {
+        throw Exception("Failed to retrieve booking ID");
+      }
+
+      final bookings = jsonDecode(response.body)['data'] as List;
+      int? bookingId;
+
+      for (var item in bookings) {
+        if (item['hall_id'] == hall.hallId &&
+            item['user_id'] == authState.userId &&
+            item['date'] == date &&
+            item['slot_from_time'] == fromTime &&
+            item['slot_to_time'] == toTime) {
+          bookingId = item['id'];
+          break;
+        }
+      }
+
+      if (bookingId == null) {
+        throw Exception("Booking not found for payment update.");
+      }
+
+      // ✅ Confirm payment
+      await ref.read(hallBookingProvider.notifier).updateBookingPaymentStatus(
+        bookingId: bookingId,
+        status: BookingStatus.confirmed,
+      );
+
       setState(() {
-        bookingStatuses[bookingKey] = BookingStatus.blocked;
+        bookingStatuses[bookingKey] = BookingStatus.confirmed;
       });
 
       if (context.mounted) {
@@ -262,11 +291,12 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update payment status: ${e.toString()}')),
+          SnackBar(content: Text('Payment update failed: ${e.toString()}')),
         );
       }
     }
   }
+
 
   Widget _buildImageGallery(Hall hall) {
     if (hall.images == null || hall.images!.isEmpty) {
@@ -298,7 +328,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: Image.network(
-                'https://www.gocodedesigners.com/banquetbookingz/${hall.images![imageIndex].url}',
+                'http://www.gocodedesigners.com/banquetbookingz/${hall.images![imageIndex].url}',
                 width: 300,
                 height: 200,
                 fit: BoxFit.cover,

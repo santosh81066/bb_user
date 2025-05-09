@@ -168,7 +168,7 @@ class PropertyCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  'https://www.gocodedesigners.com/banquetbookingz/${property.coverPic}',
+                  'http://www.gocodedesigners.com/banquetbookingz/${property.coverPic}',
                   width: 300,
                   height: 200,
                   fit: BoxFit.fill,
