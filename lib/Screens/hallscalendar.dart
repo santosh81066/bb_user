@@ -62,6 +62,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
     _updateCalendarBounds();
     _loadExistingBookings();
   }
+
   void _loadExistingBookings() async {
     try {
       for (final hallIndex in List.generate(hallTimeSlots.length, (i) => i)) {
@@ -74,8 +75,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       }
 
       // Load actual booking statuses
-      final authState = ref.read(authprovider)
-      ;
+      final authState = ref.read(authprovider);
       final headers = {
         'Authorization': 'Bearer ${authState.token}',
         'Content-Type': 'application/json',
@@ -117,7 +117,6 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
     }
   }
 
-
   void _updateCalendarBounds() {
     int year = int.parse(selectedYear);
     int month = allMonths.indexOf(selectedMonth) + 1;
@@ -148,9 +147,12 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       parsedTime.minute,
     );
   }
-  String _getBookingKey(int hallId, String date, String fromTime, String toTime) {
+
+  String _getBookingKey(
+      int hallId, String date, String fromTime, String toTime) {
     return '$hallId-$date-$fromTime-$toTime';
   }
+
   Future<void> _bookHall(Hall hall) async {
     if (selectedDay == null || selectedSlot == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -165,10 +167,12 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
 
     final formattedDate =
         "${selectedDay!.year}-${selectedDay!.month.toString().padLeft(2, '0')}-${selectedDay!.day.toString().padLeft(2, '0')}";
-    final bookingKey = _getBookingKey(hall.hallId ?? 0, formattedDate, slotFromTime, slotToTime);
-    final currentStatus = bookingStatuses[bookingKey] ?? BookingStatus.available;
-    if (currentStatus == BookingStatus.confirmed || currentStatus == BookingStatus.blocked)
-    {
+    final bookingKey = _getBookingKey(
+        hall.hallId ?? 0, formattedDate, slotFromTime, slotToTime);
+    final currentStatus =
+        bookingStatuses[bookingKey] ?? BookingStatus.available;
+    if (currentStatus == BookingStatus.confirmed ||
+        currentStatus == BookingStatus.blocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('This time slot is already booked')),
       );
@@ -188,14 +192,14 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
         return;
       }
       await ref.read(hallBookingProvider.notifier).postBooking(
-        id: DateTime.now().millisecondsSinceEpoch,
-        hallId: hall.hallId ?? 0,
-        date: formattedDate,
-        slotFromTime: slotFromTime,
-        slotToTime: slotToTime,
-        isBlocked: true,
-        isPaid: false,
-      );
+            id: DateTime.now().millisecondsSinceEpoch,
+            hallId: hall.hallId ?? 0,
+            date: formattedDate,
+            slotFromTime: slotFromTime,
+            slotToTime: slotToTime,
+            isBlocked: true,
+            isPaid: false,
+          );
 
       if (context.mounted) {
         Navigator.of(context).pop(); // close loading dialog
@@ -216,7 +220,9 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       }
     }
   }
-  void _navigateToPayment(Hall hall, String formattedDate, String slotFromTime, String slotToTime) {
+
+  void _navigateToPayment(
+      Hall hall, String formattedDate, String slotFromTime, String slotToTime) {
     Navigator.pushNamed(
       context,
       '/payment',
@@ -229,13 +235,16 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
         'price': hall.price,
         'onPaymentSuccess': (bool success) {
           if (success) {
-            _handlePaymentSuccess(hall, formattedDate, slotFromTime, slotToTime);
+            _handlePaymentSuccess(
+                hall, formattedDate, slotFromTime, slotToTime);
           }
         },
       },
     );
   }
-  void _handlePaymentSuccess(Hall hall, String date, String fromTime, String toTime) async {
+
+  void _handlePaymentSuccess(
+      Hall hall, String date, String fromTime, String toTime) async {
     final bookingKey = _getBookingKey(hall.hallId ?? 0, date, fromTime, toTime);
 
     try {
@@ -275,9 +284,9 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
 
       // ✅ Confirm payment
       await ref.read(hallBookingProvider.notifier).updateBookingPaymentStatus(
-        bookingId: bookingId,
-        status: BookingStatus.confirmed,
-      );
+            bookingId: bookingId,
+            status: BookingStatus.confirmed,
+          );
 
       setState(() {
         bookingStatuses[bookingKey] = BookingStatus.confirmed;
@@ -285,7 +294,8 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment successful! Your booking is confirmed.')),
+          const SnackBar(
+              content: Text('Payment successful! Your booking is confirmed.')),
         );
       }
     } catch (e) {
@@ -296,7 +306,6 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       }
     }
   }
-
 
   Widget _buildImageGallery(Hall hall) {
     if (hall.images == null || hall.images!.isEmpty) {
@@ -344,7 +353,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                     child: CircularProgressIndicator(
                       value: loadingProgress.expectedTotalBytes != null
                           ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
+                              loadingProgress.expectedTotalBytes!
                           : null,
                     ),
                   );
@@ -394,11 +403,15 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                         .countUniqueBlockedUsersPerDay(hall.hallId ?? 0),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: Text("Loading user block info...", style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                        ),));
+                        return const Center(
+                            child: Text(
+                          "Loading user block info...",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ));
                       } else if (snapshot.hasError) {
                         return Text("Error: ${snapshot.error}");
                       } else if (snapshot.hasData) {
@@ -700,31 +713,31 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       decoration: BoxDecoration(
         gradient: isAvailable
             ? LinearGradient(
-          colors: [Colors.green.shade50, Colors.green.shade100],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        )
+                colors: [Colors.green.shade50, Colors.green.shade100],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
             : LinearGradient(
-          colors: [Colors.red.shade50, Colors.red.shade100],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+                colors: [Colors.red.shade50, Colors.red.shade100],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
         borderRadius: BorderRadius.circular(10),
         boxShadow: isAvailable
             ? [
-          BoxShadow(
-            color: Colors.green.shade100.withOpacity(0.5),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          )
-        ]
+                BoxShadow(
+                  color: Colors.green.shade100.withOpacity(0.5),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
+              ]
             : [
-          BoxShadow(
-            color: Colors.red.shade100.withOpacity(0.5),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          )
-        ],
+                BoxShadow(
+                  color: Colors.red.shade100.withOpacity(0.5),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
+              ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -751,7 +764,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                 label,
                 style: TextStyle(
                   color:
-                  isAvailable ? Colors.green.shade800 : Colors.red.shade800,
+                      isAvailable ? Colors.green.shade800 : Colors.red.shade800,
                   fontWeight: isAvailable ? FontWeight.w600 : FontWeight.normal,
                   fontSize: 12,
                 ),
@@ -803,9 +816,9 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                 isExpanded: true,
                 items: years
                     .map((year) => DropdownMenuItem(
-                  value: year,
-                  child: Center(child: Text(year)),
-                ))
+                          value: year,
+                          child: Center(child: Text(year)),
+                        ))
                     .toList(),
                 onChanged: (value) {
                   setState(() {
@@ -828,9 +841,9 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                 isExpanded: true,
                 items: months
                     .map((month) => DropdownMenuItem(
-                  value: month,
-                  child: Center(child: Text(month)),
-                ))
+                          value: month,
+                          child: Center(child: Text(month)),
+                        ))
                     .toList(),
                 onChanged: (value) {
                   setState(() {
@@ -871,8 +884,8 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
               selectedSlot = null; // Reset selected slot
 
               final slots = hall.slots?.map((slot) {
-                return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
-              }).toList() ??
+                    return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
+                  }).toList() ??
                   [];
 
               hallTimeSlots[selectedIndex!] = slots;
@@ -983,14 +996,18 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                     selectedDay!.month == now.month &&
                     selectedDay!.day == now.day;
 
-                final slotFromTimeStr = slot.split('From: ')[1].split(' To: ')[0];
+                final slotFromTimeStr =
+                    slot.split('From: ')[1].split(' To: ')[0];
                 final slotToTimeStr = slot.split(' To: ')[1];
 
                 final slotFromTime = _parseTime(slotFromTimeStr, selectedDay!);
 
-                final formattedDate = "${selectedDay!.year}-${selectedDay!.month.toString().padLeft(2, '0')}-${selectedDay!.day.toString().padLeft(2, '0')}";
-                final bookingKey = _getBookingKey(hall.hallId ?? 0, formattedDate, slotFromTimeStr, slotToTimeStr);
-                final bookingStatus = bookingStatuses[bookingKey] ?? BookingStatus.available;
+                final formattedDate =
+                    "${selectedDay!.year}-${selectedDay!.month.toString().padLeft(2, '0')}-${selectedDay!.day.toString().padLeft(2, '0')}";
+                final bookingKey = _getBookingKey(hall.hallId ?? 0,
+                    formattedDate, slotFromTimeStr, slotToTimeStr);
+                final bookingStatus =
+                    bookingStatuses[bookingKey] ?? BookingStatus.available;
 
                 // Determine if the slot should be disabled
                 bool isDisabled = isToday && slotFromTime.isBefore(now) ||
@@ -1005,10 +1022,6 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                   slotColor = Colors.amber[100];
                 }
 
-
-
-
-
                 return Container(
                   color: slotColor,
                   child: RadioListTile<String>(
@@ -1018,22 +1031,25 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                       slot,
                       style: TextStyle(
                         color: isDisabled ? Colors.grey : null,
-                        fontWeight: selectedSlot == slot ? FontWeight.bold : null,
+                        fontWeight:
+                            selectedSlot == slot ? FontWeight.bold : null,
                       ),
                     ),
                     subtitle: bookingStatus == BookingStatus.confirmed
-                        ? const Text('Already Booked', style: TextStyle(color: Colors.red))
+                        ? const Text('Already Booked',
+                            style: TextStyle(color: Colors.red))
                         : bookingStatus == BookingStatus.blocked
-                        ? Text('Pending Payment', style: TextStyle(color: Colors.amber[800]))
-                        : null,
+                            ? Text('Pending Payment',
+                                style: TextStyle(color: Colors.amber[800]))
+                            : null,
                     activeColor: Theme.of(context).primaryColor,
                     onChanged: isDisabled
                         ? null
                         : (value) {
-                      setState(() {
-                        selectedSlot = value;
-                      });
-                    },
+                            setState(() {
+                              selectedSlot = value;
+                            });
+                          },
                   ),
                 );
               }).toList(),
@@ -1054,7 +1070,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                 ),
                 onPressed: ref.watch(hallBookingProvider) is AsyncLoading
                     ? null
-                    :  () => _bookHall(hall),
+                    : () => _bookHall(hall),
                 child: _getBookingButtonText(hall),
               ),
             ),
@@ -1062,15 +1078,20 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       ],
     );
   }
+
   Widget _getBookingButtonText(Hall hall) {
-    if (selectedDay == null || selectedSlot == null) return const Text('Book Hall');
+    if (selectedDay == null || selectedSlot == null)
+      return const Text('Book Hall');
 
     final slotParts = selectedSlot!.split('From: ')[1].split(' To: ');
     final slotFromTime = slotParts[0];
     final slotToTime = slotParts[1];
-    final formattedDate = "${selectedDay!.year}-${selectedDay!.month.toString().padLeft(2, '0')}-${selectedDay!.day.toString().padLeft(2, '0')}";
-    final bookingKey = _getBookingKey(hall.hallId ?? 0, formattedDate, slotFromTime, slotToTime);
-    final bookingStatus = bookingStatuses[bookingKey] ?? BookingStatus.available;
+    final formattedDate =
+        "${selectedDay!.year}-${selectedDay!.month.toString().padLeft(2, '0')}-${selectedDay!.day.toString().padLeft(2, '0')}";
+    final bookingKey = _getBookingKey(
+        hall.hallId ?? 0, formattedDate, slotFromTime, slotToTime);
+    final bookingStatus =
+        bookingStatuses[bookingKey] ?? BookingStatus.available;
 
     if (bookingStatus == BookingStatus.blocked) {
       return Text(
@@ -1092,8 +1113,6 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       );
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -1131,123 +1150,112 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       ),
       body: halls.isNotEmpty
           ? Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ListView.builder(
-          itemCount: halls.length,
-          itemBuilder: (context, index) {
-            final hall = halls[index];
-            final hallId = hall.hallId ?? 0;
+              padding: const EdgeInsets.all(8.0),
+              child: ListView.builder(
+                itemCount: halls.length,
+                itemBuilder: (context, index) {
+                  final hall = halls[index];
+                  final hallId = hall.hallId ?? 0;
 
-            final isSelected = selectedIndex == index;
+                  final isSelected = selectedIndex == index;
 
-            return Column(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedIndex = isSelected ? null : index;
-                      selectedSlot = null; // Reset selected slot
-                      if (!isSelected && hall.slots != null) {
-                        final slots = hall.slots!.map((slot) {
-                          return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
-                        }).toList();
-                        hallTimeSlots[index] = slots;
-                      }
-                    });
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.deepPurple[50],
-                      border: Border.all(
-                          color: Colors.deepPurple.shade200, width: 1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildImageGallery(hall),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              hall.name ?? 'No Hall Name',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                  return Column(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedIndex = isSelected ? null : index;
+                            selectedSlot = null; // Reset selected slot
+                            if (!isSelected && hall.slots != null) {
+                              final slots = hall.slots!.map((slot) {
+                                return 'From: ${slot.slotFromTime ?? ''} To: ${slot.slotToTime ?? ''}';
+                              }).toList();
+                              hallTimeSlots[index] = slots;
+                            }
+                          });
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurple[50],
+                            border: Border.all(
+                                color: Colors.deepPurple.shade200, width: 1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildImageGallery(hall),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    hall.name ?? 'No Hall Name',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      _buildPriceInfo(hall),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        isSelected
+                                            ? Icons.expand_less
+                                            : Icons.expand_more,
+                                        color: Colors.deepPurple,
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ),
-
-
-                            Row(
-                              children: [
-                                // if (hall.images != null &&
-                                //     hall.images!.isNotEmpty)
-                                //   Text(
-                                //     '${hall.images!.length} photos',
-                                //     style: TextStyle(
-                                //       color: Colors.grey[600],
-                                //       fontSize: 12,
-                                //     ),
-                                //   ),
-                                _buildPriceInfo(hall),
-                                const SizedBox(width: 8),
-                                Icon(
-                                  isSelected
-                                      ? Icons.expand_less
-                                      : Icons.expand_more,
-                                  color: Colors.deepPurple,
-                                ),
-                              ],
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+                              // _buildPriceInfo(hall),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        // _buildPriceInfo(hall),
-                      ],
-                    ),
-                  ),
-                ),
-                if (isSelected)
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    padding: const EdgeInsets.all(16),
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border:
-                      Border.all(color: Colors.deepPurple.shade100),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+                      ),
+                      if (isSelected)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.all(16),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border:
+                                Border.all(color: Colors.deepPurple.shade100),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHallFeatures(hall),
+                              const Divider(height: 32),
+                              _buildCalendarSection(hall),
+                              _buildTimeSlots(hall),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHallFeatures(hall),
-                        const Divider(height: 32),
-                        _buildCalendarSection(hall),
-                        _buildTimeSlots(hall),
-                      ],
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      )
+                    ],
+                  );
+                },
+              ),
+            )
           : const Center(
-        child: Text('No halls found for this property'),
-      ),
+              child: Text('No halls found for this property'),
+            ),
     );
   }
 }
