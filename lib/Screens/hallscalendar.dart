@@ -30,6 +30,8 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
   String? selectedSlot;
   Map<int, List<String>> hallTimeSlots = {};
   Map<String, BookingStatus> bookingStatuses = {};
+
+
   // For month/year selection
   late List<String> years;
   final List<String> allMonths = [
@@ -62,20 +64,22 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
     _updateCalendarBounds();
     _loadExistingBookings();
   }
+  BookingStatus _mapStatusCode(String code) {
+    switch (code) {
+      case 'c':
+        return BookingStatus.confirmed;
+      case 'b':
+        return BookingStatus.blocked;
+      case '0':
+      default:
+        return BookingStatus.available;
+    }
+  }
+
+  // Update the code that loads existing bookings
   void _loadExistingBookings() async {
     try {
-      for (final hallIndex in List.generate(hallTimeSlots.length, (i) => i)) {
-        final hallId = hallTimeSlots.keys.elementAt(hallIndex);
-        final response = await ref
-            .read(hallBookingProvider.notifier)
-            .countSlotStatuses(hallId);
-
-        // (Optional) process counts
-      }
-
-      // Load actual booking statuses
-      final authState = ref.read(authprovider)
-      ;
+      final authState = ref.read(authprovider);
       final headers = {
         'Authorization': 'Bearer ${authState.token}',
         'Content-Type': 'application/json',
@@ -88,27 +92,28 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        final List messages = responseData['messages'];
 
+        // Extract booking data
+        final List bookings = responseData['data'] as List;
         final updatedStatuses = <String, BookingStatus>{};
 
-        for (final bookingList in messages) {
-          for (final booking in bookingList) {
-            final hallId = booking['hall_id'];
-            final date = booking['date'];
-            final fromTime = booking['slot_from_time'];
-            final toTime = booking['slot_to_time'];
-            final statusCode = booking['is_paid'];
-            final status = bookingStatusFromCode(statusCode);
+        for (var booking in bookings) {
+          final hallId = booking['hall_id'];
+          final date = booking['date'];
+          final fromTime = booking['slot_from_time'];
+          final toTime = booking['slot_to_time'];
+          final statusCode = booking['is_paid'];
 
-            final key = _getBookingKey(hallId, date, fromTime, toTime);
-            updatedStatuses[key] = status;
-          }
+          final key = _getBookingKey(hallId, date, fromTime, toTime);
+          updatedStatuses[key] = _mapStatusCode(statusCode);
         }
 
         setState(() {
           bookingStatuses = updatedStatuses;
         });
+
+
+
       } else {
         throw Exception("Failed to load booking statuses");
       }
@@ -151,6 +156,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
   String _getBookingKey(int hallId, String date, String fromTime, String toTime) {
     return '$hallId-$date-$fromTime-$toTime';
   }
+  // Update the _bookHall method in your HallsCalendarScreen class
   Future<void> _bookHall(Hall hall) async {
     if (selectedDay == null || selectedSlot == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -167,19 +173,23 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
         "${selectedDay!.year}-${selectedDay!.month.toString().padLeft(2, '0')}-${selectedDay!.day.toString().padLeft(2, '0')}";
     final bookingKey = _getBookingKey(hall.hallId ?? 0, formattedDate, slotFromTime, slotToTime);
     final currentStatus = bookingStatuses[bookingKey] ?? BookingStatus.available;
-    if (currentStatus == BookingStatus.confirmed || currentStatus == BookingStatus.blocked)
-    {
+
+    // Check if the slot is already confirmed
+    if (currentStatus == BookingStatus.confirmed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('This time slot is already booked')),
       );
       return;
     }
+
     try {
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => const Center(child: CircularProgressIndicator()),
       );
+
+      // If the slot is already blocked, proceed to payment directly
       if (currentStatus == BookingStatus.blocked) {
         if (context.mounted) {
           Navigator.of(context).pop(); // close loading dialog
@@ -187,15 +197,21 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
         }
         return;
       }
+
+      // For a new booking, first mark it as blocked
       await ref.read(hallBookingProvider.notifier).postBooking(
-        id: DateTime.now().millisecondsSinceEpoch,
         hallId: hall.hallId ?? 0,
+        bookingId: null, // This is a new booking
         date: formattedDate,
         slotFromTime: slotFromTime,
         slotToTime: slotToTime,
-        isBlocked: true,
-        isPaid: false,
+        isPaid: bookingStatusToString(BookingStatus.blocked),        // Mark as blocked "b"
       );
+
+      // Update local state immediately
+      setState(() {
+        bookingStatuses[bookingKey] = BookingStatus.blocked;
+      });
 
       if (context.mounted) {
         Navigator.of(context).pop(); // close loading dialog
@@ -204,7 +220,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
           const SnackBar(content: Text('Slot blocked successfully!')),
         );
 
-        // Navigate to payment page after booking success
+        // Navigate to payment page
         _navigateToPayment(hall, formattedDate, slotFromTime, slotToTime);
       }
     } catch (e) {
@@ -235,6 +251,8 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       },
     );
   }
+
+// Update the _handlePaymentSuccess method
   void _handlePaymentSuccess(Hall hall, String date, String fromTime, String toTime) async {
     final bookingKey = _getBookingKey(hall.hallId ?? 0, date, fromTime, toTime);
 
@@ -245,42 +263,48 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
         'Content-Type': 'application/json',
       };
 
-      // ✅ Use correct endpoint
+      // Get all bookings to find our booking ID
       final response = await http.get(
         Uri.parse(Bbapi.hallbooking),
         headers: headers,
       );
 
       if (response.statusCode != 200) {
-        throw Exception("Failed to retrieve booking ID");
+        throw Exception("Failed to retrieve booking data");
       }
 
-      final bookings = jsonDecode(response.body)['data'] as List;
+      final responseData = jsonDecode(response.body);
+      final List bookings = responseData['data'] as List;
       int? bookingId;
 
-      for (var item in bookings) {
-        if (item['hall_id'] == hall.hallId &&
-            item['user_id'] == authState.userId &&
-            item['date'] == date &&
-            item['slot_from_time'] == fromTime &&
-            item['slot_to_time'] == toTime) {
-          bookingId = item['id'];
+      // Find the booking that matches our criteria
+      for (var booking in bookings) {
+        if (booking['hall_id'] == hall.hallId &&
+            booking['user_id'] == authState.userId &&
+            booking['date'] == date &&
+            booking['slot_from_time'] == fromTime &&
+            booking['slot_to_time'] == toTime &&
+            booking['is_paid'] == bookingStatusToString(BookingStatus.blocked)) {
+          bookingId = booking['id'];
           break;
         }
+
       }
 
       if (bookingId == null) {
         throw Exception("Booking not found for payment update.");
       }
 
-      // ✅ Confirm payment
+      // Update the booking to confirmed status
       await ref.read(hallBookingProvider.notifier).updateBookingPaymentStatus(
         bookingId: bookingId,
-        status: BookingStatus.confirmed,
+        status: bookingStatusToString(BookingStatus.confirmed),
       );
 
+
+      // Update local state
       setState(() {
-        bookingStatuses[bookingKey] = BookingStatus.confirmed;
+        bookingStatuses[bookingKey] = BookingStatus.confirmed as BookingStatus;
       });
 
       if (context.mounted) {
@@ -288,6 +312,9 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
           const SnackBar(content: Text('Payment successful! Your booking is confirmed.')),
         );
       }
+
+      // Refresh booking data
+      _loadExistingBookings();
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -953,6 +980,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
     );
   }
 
+  // Update the _buildTimeSlots method to properly show booking status
   Widget _buildTimeSlots(Hall hall) {
     if (selectedDay == null) return const SizedBox.shrink();
 
@@ -990,11 +1018,10 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
 
                 final formattedDate = "${selectedDay!.year}-${selectedDay!.month.toString().padLeft(2, '0')}-${selectedDay!.day.toString().padLeft(2, '0')}";
                 final bookingKey = _getBookingKey(hall.hallId ?? 0, formattedDate, slotFromTimeStr, slotToTimeStr);
-                final bookingStatus = bookingStatuses[bookingKey] ?? BookingStatus.available;
+                final bookingStatus = bookingStatuses[bookingKey];
 
                 // Determine if the slot should be disabled
                 bool isDisabled = isToday && slotFromTime.isBefore(now) ||
-                    bookingStatus == BookingStatus.blocked ||
                     bookingStatus == BookingStatus.confirmed;
 
                 // Style based on booking status
@@ -1003,11 +1030,9 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                   slotColor = Colors.red[100];
                 } else if (bookingStatus == BookingStatus.blocked) {
                   slotColor = Colors.amber[100];
+                } else {
+                  slotColor = Colors.green[50]; // Available
                 }
-
-
-
-
 
                 return Container(
                   color: slotColor,
@@ -1021,11 +1046,14 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                         fontWeight: selectedSlot == slot ? FontWeight.bold : null,
                       ),
                     ),
-                    subtitle: bookingStatus == BookingStatus.confirmed
-                        ? const Text('Already Booked', style: TextStyle(color: Colors.red))
-                        : bookingStatus == BookingStatus.blocked
-                        ? Text('Pending Payment', style: TextStyle(color: Colors.amber[800]))
-                        : null,
+                    subtitle: _getSlotStatusText(
+                      bookingStatus,
+                      hall.hallId ?? 0,
+                      formattedDate,
+                      slotFromTimeStr,
+                      slotToTimeStr,
+                    ),
+
                     activeColor: Theme.of(context).primaryColor,
                     onChanged: isDisabled
                         ? null
@@ -1054,7 +1082,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
                 ),
                 onPressed: ref.watch(hallBookingProvider) is AsyncLoading
                     ? null
-                    :  () => _bookHall(hall),
+                    : () => _bookHall(hall),
                 child: _getBookingButtonText(hall),
               ),
             ),
@@ -1062,6 +1090,34 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
       ],
     );
   }
+
+  Widget? _getSlotStatusText(BookingStatus? status, int hallId, String date, String fromTime, String toTime) {
+    if (status == BookingStatus.confirmed) {
+      return const Text('Already Booked', style: TextStyle(color: Colors.red));
+    } else if (status == BookingStatus.blocked) {
+      return FutureBuilder<int>(
+        future: ref.read(hallBookingProvider.notifier).countUsersBlockedSameSlot(
+          hallId: hallId,
+          date: date,
+          fromTime: fromTime,
+          toTime: toTime,
+        ),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Text('Loading...', style: TextStyle(color: Colors.amber));
+          } else if (snapshot.hasError) {
+            return Text('Error', style: TextStyle(color: Colors.red));
+          } else {
+            return Text('${snapshot.data} users blocked this slot', style: TextStyle(color: Colors.amber));
+          }
+        },
+      );
+    }
+    return const Text('Available', style: TextStyle(color: Colors.green));
+  }
+
+
+
   Widget _getBookingButtonText(Hall hall) {
     if (selectedDay == null || selectedSlot == null) return const Text('Book Hall');
 

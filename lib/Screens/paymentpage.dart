@@ -2,8 +2,10 @@ import 'package:bb_user/Screens/walletscreen.dart';
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-
+import 'dart:convert';
 import '../Colors/coustcolors.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PaymentPage extends StatefulWidget {
   const PaymentPage({Key? key}) : super(key: key);
@@ -24,12 +26,21 @@ class _PaymentPageState extends State<PaymentPage> {
   late String slotToTime;
   late String? hallName;
   late int? price;
+  int? userId;
   late Function(bool)? onPaymentSuccess;
+
   @override
   void initState() {
     super.initState();
     _initializeRazorpay();
+    _loadUserId();
     _descriptionController.text = "Banquet Booking Payment";
+  }
+  Future<void> _loadUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userId = prefs.getInt('user_id');
+    });
   }
   @override
   void didChangeDependencies() {
@@ -68,28 +79,90 @@ class _PaymentPageState extends State<PaymentPage> {
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     Fluttertoast.showToast(
       msg: "Payment Successful: ${response.paymentId}",
       toastLength: Toast.LENGTH_SHORT,
     );
-    print ("Payment Successful: ${response.paymentId}");
-    print ("Payment Successful: ${response.data}");
-    if (onPaymentSuccess != null) {
-      onPaymentSuccess!(true);
+
+    if (userId == null) {
+      Fluttertoast.showToast(msg: "User ID not available");
+      return;
     }
-    Navigator.pop(context);
+
+    try {
+      final transaction = {
+        'user_id': userId,
+        'razorpay_payment_id': response.paymentId,
+        'razorpay_order_id': response.orderId,
+        'razorpay_signature': response.signature,
+        'amt': price ?? 1,
+      };
+
+      final res = await http.post(
+        Uri.parse('https://www.gocodedesigners.com/bbtransactionhistory'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(transaction),
+      );
+
+      if (res.statusCode == 201) {
+        if (onPaymentSuccess != null) onPaymentSuccess!(true);
+        Navigator.pop(context);
+      } else {
+        Fluttertoast.showToast(msg: "Transaction save failed: ${res.body}");
+      }
+    } catch (e) {
+      Fluttertoast.showToast(msg: "Error saving transaction: $e");
+    }
   }
 
-  void _handlePaymentError(PaymentFailureResponse response) {
+
+  void _handlePaymentError(PaymentFailureResponse response) async {
     Fluttertoast.showToast(
       msg: "Payment Failed: ${response.message}",
       toastLength: Toast.LENGTH_SHORT,
     );
+
+    print("Payment Failed");
+    print("Code: ${response.code}");
+    print("Message: ${response.message}");
+    print ("Payment Error: ${response.error}");
+    if (userId == null) {
+      Fluttertoast.showToast(msg: "User ID not available for saving failed transaction");
+      return;
+    }
+
+    try {
+      final failedTransaction = {
+        'user_id': userId,
+        'razorpay_payment_id': '', // No payment ID in case of total failure
+        'razorpay_order_id': '',   // You can store attempt info if available
+        'razorpay_signature': '',
+        'amt': price ?? 1,
+        'status': 'failed'
+      };
+
+      final res = await http.post(
+        Uri.parse('https://www.gocodedesigners.com/bbtransactionhistory'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(failedTransaction),
+      );
+
+      if (res.statusCode == 201) {
+        print("Failed transaction recorded");
+      } else {
+        print("Failed to record failed transaction: ${res.body}");
+      }
+    } catch (e) {
+      print("Error sending failed transaction: $e");
+    }
+
     if (onPaymentSuccess != null) {
       onPaymentSuccess!(false);
     }
+
   }
+
 
   void _handleExternalWallet(ExternalWalletResponse response) {
     Fluttertoast.showToast(
@@ -97,6 +170,8 @@ class _PaymentPageState extends State<PaymentPage> {
       toastLength: Toast.LENGTH_SHORT,
     );
   }
+
+
 
   void _openRazorpayPayment() {
     String mobile = _mobileController.text.trim();

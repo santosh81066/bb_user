@@ -1,55 +1,54 @@
-// hall_booking.dart
+// ==================== MODELS: hall_booking.dart ====================
+// This file defines the data models and booking status logic for hall booking.
+
 enum BookingStatus {
-  available,  // maps to "0"
-  blocked,    // maps to "b"
-  confirmed,  // maps to "c"
+  available,   // likely represented as '0'
+  blocked,     // 'b'
+  confirmed,   // 'c'
 }
 
-BookingStatus bookingStatusFromCode(String code) {
+
+String getBookingStatusName(String code) {
   switch (code) {
-    case 'b':
-      return BookingStatus.blocked;
-    case 'c':
-      return BookingStatus.confirmed;
-    case '0':
+    case BookingStatus.blocked:
+      return 'Blocked';
+    case BookingStatus.confirmed:
+      return 'Confirmed';
+    case BookingStatus.available:
     default:
-      return BookingStatus.available;
+      return 'Available';
   }
 }
-
-String bookingStatusToCode(BookingStatus status) {
+String bookingStatusToString(BookingStatus status) {
   switch (status) {
-    case BookingStatus.blocked:
-      return 'b';
     case BookingStatus.confirmed:
       return 'c';
+    case BookingStatus.blocked:
+      return 'b';
     case BookingStatus.available:
     default:
       return '0';
   }
 }
 
-String bookingStatusToString(BookingStatus status) => status.name;
 
 class HallBookingRequest {
-  final int id;
+  final int? id;
   final int hallId;
   final int userId;
   final String date;
   final String slotFromTime;
   final String slotToTime;
   final String isPaid;
-  // new field
 
   HallBookingRequest({
-    required this.id,
+    this.id,
     required this.hallId,
     required this.userId,
     required this.date,
     required this.slotFromTime,
     required this.slotToTime,
     required this.isPaid,
-
   });
 
   factory HallBookingRequest.fromJson(Map<String, dynamic> json) {
@@ -61,56 +60,61 @@ class HallBookingRequest {
       slotFromTime: json['slot_from_time'],
       slotToTime: json['slot_to_time'],
       isPaid: json['is_paid'],
-
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    "id": id,
-    "hall_id": hallId,
-    "user_id": userId,
-    "date": date,
-    "slot_from_time": slotFromTime,
-    "slot_to_time": slotToTime,
-    "is_paid": isPaid,
+  Map<String, dynamic> toJson() {
+    final data = {
+      'hall_id': hallId,
+      'user_id': userId,
+      'date': date,
+      'slot_from_time': slotFromTime,
+      'slot_to_time': slotToTime,
+      'is_paid': isPaid,
+    };
 
+    if (id != null) data['id'] = id!;
+    return data;
+  }
+}
+
+class BookingUpdateRequest {
+  final int bookingId;
+  final String isPaid;
+
+  BookingUpdateRequest({required this.bookingId, required this.isPaid});
+
+  Map<String, dynamic> toJson() => {
+    'booking_id': bookingId,
+    'is_paid': isPaid,
   };
 }
 
-
-// Response model
 class HallBookingResponse {
   final int statusCode;
   final bool success;
-  final List<List<HallBookingData>> messages;
-  final dynamic data;
+  final List<dynamic> messages;
+  final List<HallBookingData> data;
 
   HallBookingResponse({
     required this.statusCode,
     required this.success,
     required this.messages,
-    this.data,
+    required this.data,
   });
 
   factory HallBookingResponse.fromJson(Map<String, dynamic> json) {
-    List<List<HallBookingData>> messagesData = [];
-
-    if (json['messages'] is List) {
-      messagesData = (json['messages'] as List).map((outerList) {
-        if (outerList is List) {
-          return (outerList as List).map((item) {
-            return HallBookingData.fromJson(item as Map<String, dynamic>);
-          }).toList();
-        }
-        return <HallBookingData>[];
-      }).toList();
+    List<HallBookingData> bookingsData = [];
+    if (json['data'] is List) {
+      bookingsData = (json['data'] as List)
+          .map((item) => HallBookingData.fromJson(item))
+          .toList();
     }
-
     return HallBookingResponse(
       statusCode: json['statusCode'],
       success: json['success'],
-      messages: messagesData,
-      data: json['data'],
+      messages: json['messages'] ?? [],
+      data: bookingsData,
     );
   }
 }
@@ -123,7 +127,7 @@ class HallBookingData {
   final String slotFromTime;
   final String slotToTime;
   final String isPaid;
-  final BookingStatus bookingStatus;
+  final String bookingStatus;
 
   HallBookingData({
     required this.id,
@@ -145,8 +149,9 @@ class HallBookingData {
       slotFromTime: json['slot_from_time'],
       slotToTime: json['slot_to_time'],
       isPaid: json['is_paid'],
-      bookingStatus: bookingStatusFromCode(json['is_paid']),
+      bookingStatus: getBookingStatusName(json['is_paid']),
     );
   }
 }
 
+// Next: Provider + Notifier will be added

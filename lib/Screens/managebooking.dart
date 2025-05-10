@@ -26,27 +26,27 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
   bool _isFirstLoad = true;
 
   @override
+  @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this); // Updated to 3 tabs
+
+    _tabController = TabController(length: 3, vsync: this);
 
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
-        setState(() {}); // Explicitly refresh when tab changes
+        setState(() {});
       }
+    });
+
+    // 🛠 Fix the provider modification issue
+    Future.microtask(() async {
+      await _loadData();  // ⬅ SAFE to call now
     });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
 
-    // This ensures we only load data once when the widget is first built
-    if (_isFirstLoad) {
-      _loadData();
-      _isFirstLoad = false;
-    }
-  }
+  @override
+
 
   // Explicit method to load all required data
   Future<void> _loadData() async {
@@ -74,13 +74,20 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
   // Format time to 12-hour format
   String formatTime(String time) {
+    if (time.isEmpty || !time.contains(':')) return 'Invalid Time';
+
     final timeParts = time.split(':');
-    int hour = int.parse(timeParts[0]);
+    if (timeParts.length < 2) return 'Invalid Time';
+
+    final hour = int.tryParse(timeParts[0]) ?? 0;
     final minute = timeParts[1];
     final period = hour >= 12 ? 'PM' : 'AM';
-    hour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    return '$hour:$minute $period';
+    final formattedHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+
+    return '$formattedHour:$minute $period';
   }
+
+
 
   bool isCurrentBooking(GetHallBooking booking) {
     final today = DateTime.now();
@@ -100,37 +107,38 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
   // Check if a booking is completed (past date)
   bool isCompletedBooking(GetHallBooking booking) {
-    final today = DateTime.now();
-    final bookingDate = DateTime.parse(booking.date);
-    final bookingEndTime = booking.slotToTime.split(':');
-    final bookingEndHour = int.parse(bookingEndTime[0]);
-    final bookingEndMinute = int.parse(bookingEndTime[1]);
+    if (booking.slotToTime.isEmpty || !booking.slotToTime.contains(':')) return false;
 
-    // Create a DateTime object for the end of the booking
-    final bookingEndDateTime = DateTime(
+    final endParts = booking.slotToTime.split(':');
+    if (endParts.length < 2) return false;
+
+    final endHour = int.tryParse(endParts[0]) ?? 0;
+    final endMinute = int.tryParse(endParts[1]) ?? 0;
+
+    final bookingDate = DateTime.tryParse(booking.date) ?? DateTime.now();
+    final endDateTime = DateTime(
       bookingDate.year,
       bookingDate.month,
       bookingDate.day,
-      bookingEndHour,
-      bookingEndMinute,
+      endHour,
+      endMinute,
     );
 
-    return bookingEndDateTime.isBefore(today);
+    return endDateTime.isBefore(DateTime.now());
   }
 
+
+
   // Filter bookings based on tab and search query
-  List<GetHallBooking> filterBookings(
-      List<GetHallBooking> bookings, int tabIndex) {
+  List<GetHallBooking> filterBookings(List<GetHallBooking> bookings, int tabIndex) {
     List<GetHallBooking> filteredList;
 
     switch (tabIndex) {
       case 1: // Upcoming
-        filteredList =
-            bookings.where((booking) => isUpcomingBooking(booking)).toList();
+        filteredList = bookings.where((booking) => isUpcomingBooking(booking)).toList();
         break;
       case 2: // Completed
-        filteredList =
-            bookings.where((booking) => isCompletedBooking(booking)).toList();
+        filteredList = bookings.where((booking) => isCompletedBooking(booking)).toList();
         break;
       default: // All
         filteredList = bookings;
@@ -139,48 +147,56 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
     // Apply search filter if search query exists
     if (searchQuery.isNotEmpty) {
       filteredList = filteredList.where((booking) {
-        final hallNameMatch = booking.hallName
-                ?.toLowerCase()
-                .contains(searchQuery.toLowerCase()) ??
-            false;
-        final propertyMatch = booking.propertyName
-                ?.toLowerCase()
-                .contains(searchQuery.toLowerCase()) ??
-            false;
+        final hallNameMatch = booking.hallName?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false;
+        final propertyMatch = booking.propertyName?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false;
         final dateMatch = booking.date.contains(searchQuery);
         return hallNameMatch || propertyMatch || dateMatch;
       }).toList();
     }
 
-    // Sort bookings by date (and time) in descending order (latest first)
+    // Safely sort bookings by date and time in descending order
     filteredList.sort((a, b) {
-      final dateA = DateTime.parse(a.date);
-      final dateB = DateTime.parse(b.date);
+      try {
+        final dateA = DateTime.tryParse(a.date);
+        final dateB = DateTime.tryParse(b.date);
 
-      // If dates are the same, sort by time
-      if (dateA
-          .isAtSameMomentAs(DateTime(dateB.year, dateB.month, dateB.day))) {
-        final timeA = a.slotFromTime.split(':');
-        final timeB = b.slotFromTime.split(':');
+        if (dateA == null || dateB == null) return 0;
 
-        final hourA = int.parse(timeA[0]);
-        final hourB = int.parse(timeB[0]);
+        // If dates are the same, sort by time
+        if (dateA.year == dateB.year &&
+            dateA.month == dateB.month &&
+            dateA.day == dateB.day) {
+          if (a.slotFromTime.isEmpty || b.slotFromTime.isEmpty) return 0;
 
-        if (hourA != hourB) {
-          return hourB.compareTo(hourA); // Later hour first
+          final timeA = a.slotFromTime.split(':');
+          final timeB = b.slotFromTime.split(':');
+
+          if (timeA.length < 2 || timeB.length < 2) return 0;
+
+
+          if (timeA.length < 2 || timeB.length < 2) return 0;
+
+          final hourA = int.tryParse(timeA[0]) ?? 0;
+          final minuteA = int.tryParse(timeA[1]) ?? 0;
+          final hourB = int.tryParse(timeB[0]) ?? 0;
+          final minuteB = int.tryParse(timeB[1]) ?? 0;
+
+          if (hourA != hourB) return hourB.compareTo(hourA);
+          return minuteB.compareTo(minuteA);
         }
 
-        final minuteA = int.parse(timeA[1]);
-        final minuteB = int.parse(timeB[1]);
-        return minuteB.compareTo(minuteA); // Later minute first
+        return dateB.compareTo(dateA);
+      } catch (e) {
+        print('Sort error: $e');
+        return 0;
       }
-
-      // Otherwise sort by date
-      return dateB.compareTo(dateA); // Latest date first
     });
+
+
 
     return filteredList;
   }
+
 
   // Method to navigate to review page with appropriate ID
   void _navigateToReview(String type, GetHallBooking booking) {
@@ -318,12 +334,14 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
               color: Color(0xFF6418C3),
               child: bookingsAsyncValue.when(
                 data: (bookings) {
-                  final filteredBookings =
-                      filterBookings(bookings, _tabController.index);
+                  for (var b in bookings) {
+                    print("Booking [${b.id}] FromTime: '${b.slotFromTime}', ToTime: '${b.slotToTime}'");
+                  }
+                  final filteredBookings = filterBookings(bookings, _tabController.index);
+                  print('filteredBookings.length = ${filteredBookings.length}');
 
                   if (filteredBookings.isEmpty) {
                     return ListView(
-                      // Wrap in ListView for RefreshIndicator to work
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: [
                         SizedBox(
@@ -357,15 +375,17 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                     );
                   }
 
+
                   return ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     itemCount: filteredBookings.length,
                     itemBuilder: (context, index) {
-                      final booking = filteredBookings[index];
+                      final booking = filteredBookings[index]; // ✅ Safe now
                       final isCompleted = _tabController.index == 2 ||
                           isCompletedBooking(booking);
 
+                      print("booking$booking");
                       return Card(
                         margin: const EdgeInsets.only(bottom: 16),
                         elevation: 2,

@@ -60,9 +60,10 @@ class GetHallBookingNotifier
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         if (responseData['success'] == true &&
-            responseData['messages'] != null) {
-          // Extract bookings from the response
-          final bookingsData = responseData['messages'][0] as List<dynamic>;
+            responseData['data'] != null) {
+          final bookingsData = responseData['data'] as List<dynamic>;
+          print('Decoded hall booking response: $responseData');
+
 
           // Filter bookings for the current user if userId is available
           final userBookings = authState.userId != null

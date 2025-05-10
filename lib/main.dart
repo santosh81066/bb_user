@@ -85,7 +85,7 @@ class MyApp extends ConsumerWidget {
           return const ProfileSetingsScreen();
         },
         '/payment_history': (BuildContext context) {
-          return const PaymenthistoryScreen();
+          return const PaymentHistoryScreen();
         },
         '/notification_settings': (BuildContext context) {
           return NotificationSettingsScreen();

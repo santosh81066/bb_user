@@ -149,7 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void payment_history() {
-    Navigator.pushNamed(context, '/payment');
+    Navigator.pushNamed(context, '/payment_history');
   }
 
   void notification_settings() {
@@ -255,15 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(
                             height: 20,
                           ),
-                          ListTile(
-                            title: const coustText(sName: 'Display userid'),
-                            onTap: () {
-                              // Get the user ID from the auth provider
-                              final authState = ref.read(authprovider);
-                              final userId = authState.userId;
-                              print(userId);
-                            },
-                          ),
+
                           TextButton(
                               onPressed: () {
                                 logout(context, ref);
