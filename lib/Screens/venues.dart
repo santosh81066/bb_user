@@ -2,8 +2,6 @@ import "package:flutter/material.dart";
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-
-import '../Colors/coustcolors.dart';
 import '../Providers/subscribed_provider.dart';
 import '../Providers/venues_provider.dart';
 import '../models/get_properties_model.dart';
@@ -234,8 +232,8 @@ class _ManageCalendarScreenState extends ConsumerState<Venuscreen> {
             color: Colors.grey.shade400,
           ),
           const SizedBox(height: 16),
-          Text(
-            "You may need to add the following dependencies to your pubspec.yaml:\n• google_fonts\n• flutter_staggered_animations",
+          const Text(
+            "There are Properties added yet \n please be patient until the vendor add the new properties",
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey,

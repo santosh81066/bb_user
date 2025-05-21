@@ -474,8 +474,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // This is the correct way to use AsyncValue with pattern matching
           reviewsState.when(
             loading: () => const ReviewLoadingSkeleton(),
-            error: (error, stackTrace) => ReviewErrorWidget(error: error.toString()),
+            error: (error, stackTrace) {
+              print("MANJUNADH$error");
+              return ReviewErrorWidget(error: error.toString());},
             data: (reviews) {
+              print("SANTOSH$reviews");
               if (reviews.isEmpty) {
                 return const EmptyReviewsWidget();
               }

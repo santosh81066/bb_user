@@ -7,15 +7,17 @@ import '../Colors/coustcolors.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/hall_booking_provider.dart';
 
-class PaymentPage extends StatefulWidget {
+class PaymentPage extends ConsumerStatefulWidget {
   const PaymentPage({Key? key}) : super(key: key);
 
   @override
   _PaymentPageState createState() => _PaymentPageState();
 }
 
-class _PaymentPageState extends State<PaymentPage> {
+class _PaymentPageState extends ConsumerState<PaymentPage> {
   int _selectedPaymentMethod = 1; // 0 for wallet, 1 for Razorpay
   late Razorpay _razorpay;
   final TextEditingController _mobileController = TextEditingController();
@@ -28,6 +30,7 @@ class _PaymentPageState extends State<PaymentPage> {
   late String? hallName;
   late int? price;
   int? userId;
+  late int? bookingId;
   late Function(bool)? onPaymentSuccess;
 
   // Firebase Realtime Service
@@ -50,7 +53,43 @@ class _PaymentPageState extends State<PaymentPage> {
       userId = prefs.getInt('user_id');
     });
   }
+  Future<String?> _createRazorpayOrder() async {
+    try {
+      // Prepare order data
+      final orderData = {
+        'amount': (price ?? 1) * 100, // amount in paise
+        'currency': 'INR',
+        'receipt': 'bb_${DateTime.now().millisecondsSinceEpoch}',
+        'notes': {
+          'hallId': hallId,
+          'date': date,
+          'slotFromTime': slotFromTime,
+          'slotToTime': slotToTime,
+          'bookingId': bookingId,
+        }
+      };
 
+      // Send request to your backend to create Razorpay order
+      final response = await http.post(
+        Uri.parse('https://www.gocodedesigners.com/bbcreateorder'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(orderData),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return responseData['id']; // Return the order ID
+      } else {
+        throw Exception('Failed to create order: ${response.body}');
+      }
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: "Error creating order: $e",
+        toastLength: Toast.LENGTH_LONG,
+      );
+      return null;
+    }
+  }
   Future<void> _loadWalletBalance() async {
     setState(() {
       _isLoadingWallet = true;
@@ -94,12 +133,13 @@ class _PaymentPageState extends State<PaymentPage> {
       slotToTime = args['slotToTime'] ?? '';
       hallName = args['hallName'];
       price = args['price'] ?? 0;
+      bookingId = args['bookingId']; // Add this to receive booking ID
       onPaymentSuccess = args['onPaymentSuccess'];
 
       // Set a more descriptive payment description
       if (hallName != null) {
         _descriptionController.text =
-            "Booking payment for $hallName on $date from $slotFromTime to $slotToTime";
+        "Booking payment for $hallName on $date from $slotFromTime to $slotToTime";
       }
     }
   }
@@ -117,9 +157,49 @@ class _PaymentPageState extends State<PaymentPage> {
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+   /* _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);*/
   }
 
+  // Method to update booking status
+  Future<void> _updateBookingStatus(bool isPaid) async {
+    try {
+      final hallBookingNotifier = ref.read(hallBookingProvider.notifier);
+
+      if (isPaid) {
+        // Update booking status to paid ('y')
+        await hallBookingNotifier.postBooking(
+          hallId: hallId ?? 0,
+          bookingId: bookingId,
+          date: date,
+          slotFromTime: slotFromTime,
+          slotToTime: slotToTime,
+          isPaid: 'y', // 'y' means paid
+        );
+
+        print("Booking status updated to paid");
+      } else {
+        // If payment failed, ensure status remains as blocked ('b')
+        await hallBookingNotifier.postBooking(
+          hallId: hallId ?? 0,
+          bookingId: bookingId,
+          date: date,
+          slotFromTime: slotFromTime,
+          slotToTime: slotToTime,
+          isPaid: 'b', // 'b' means blocked
+        );
+
+        print("Booking status updated to blocked");
+      }
+    } catch (e) {
+      print("Error updating booking status: $e");
+      Fluttertoast.showToast(
+        msg: "Error updating booking status: $e",
+        toastLength: Toast.LENGTH_LONG,
+      );
+    }
+  }
+
+  // Fix for the _handlePaymentSuccess method in PaymentPage class
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     Fluttertoast.showToast(
       msg: "Payment Successful: ${response.paymentId}",
@@ -132,29 +212,77 @@ class _PaymentPageState extends State<PaymentPage> {
     }
 
     try {
-      final transaction = {
-        'user_id': userId,
-        'razorpay_payment_id': response.paymentId,
-        'razorpay_order_id': response.orderId,
-        'razorpay_signature': response.signature,
-        'amt': price ?? 1,
-        'payment_method': 'razorpay'
-      };
-
-      final res = await http.post(
-        Uri.parse('https://www.gocodedesigners.com/bbtransactionhistory'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(transaction),
+      // First, update the booking status using the method in HallBookingNotifier
+      final hallBookingNotifier = ref.read(hallBookingProvider.notifier);
+      final success = await hallBookingNotifier.updateBookingWithPayment(
+          hallId: hallId ?? 0,
+          bookingId: bookingId,
+          date: date,
+          slotFromTime: slotFromTime,
+          slotToTime: slotToTime,
+          paymentMethod: 'razorpay',
+          paymentId: response.paymentId ?? '',
+          amount: (price ?? 0).toDouble(),
+          isSuccess: true
       );
 
-      if (res.statusCode == 201) {
-        if (onPaymentSuccess != null) onPaymentSuccess!(true);
-        Navigator.pop(context);
+      if (success) {
+        // Record the transaction to your backend
+        final transaction = {
+          'user_id': userId,
+          'razorpay_payment_id': response.paymentId,
+          'razorpay_order_id': response.orderId,
+          'razorpay_signature': response.signature,
+          'amt': price ?? 0,
+          'payment_method': 'razorpay',
+          'status': 'success'
+        };
+
+        final res = await http.post(
+          Uri.parse('https://www.gocodedesigners.com/bbtransactionhistory'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(transaction),
+        );
+
+        if (res.statusCode == 201) {
+          Fluttertoast.showToast(
+            msg: "Payment successful and transaction recorded!",
+            toastLength: Toast.LENGTH_SHORT,
+          );
+
+          if (onPaymentSuccess != null) onPaymentSuccess!(true);
+          Navigator.pop(context);
+        } else {
+          // Even if transaction recording fails, the payment and booking were successful
+          Fluttertoast.showToast(
+            msg: "Payment successful but transaction recording failed",
+            toastLength: Toast.LENGTH_LONG,
+          );
+
+          if (onPaymentSuccess != null) onPaymentSuccess!(true);
+          Navigator.pop(context);
+        }
       } else {
-        Fluttertoast.showToast(msg: "Transaction save failed: ${res.body}");
+        Fluttertoast.showToast(
+          msg: "Error updating booking status",
+          toastLength: Toast.LENGTH_LONG,
+        );
       }
     } catch (e) {
-      Fluttertoast.showToast(msg: "Error saving transaction: $e");
+      Fluttertoast.showToast(
+        msg: "Error processing payment: $e",
+        toastLength: Toast.LENGTH_LONG,
+      );
+
+      // Try to keep the booking as blocked even if there's an error
+      try {
+        await ref.read(hallBookingProvider.notifier).updateBookingPaymentStatus(
+          bookingId: bookingId ?? 0,
+          status: 'b', // Keep as blocked
+        );
+      } catch (_) {
+        // Silently handle this error to avoid additional user confusion
+      }
     }
   }
 
@@ -200,18 +328,196 @@ class _PaymentPageState extends State<PaymentPage> {
       print("Error sending failed transaction: $e");
     }
 
+    // Update booking status to keep it as 'blocked'
+    await _updateBookingStatus(false);
+
     if (onPaymentSuccess != null) {
       onPaymentSuccess!(false);
     }
   }
 
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    Fluttertoast.showToast(
-      msg: "External Wallet Selected: ${response.walletName}",
-      toastLength: Toast.LENGTH_SHORT,
+  // Modified _handleWalletPayment method for wallet payments
+  void _handleWalletPayment() async {
+    // Check if wallet has enough balance
+    if (_walletBalance < (price ?? 0)) {
+      showInsufficientBalanceDialog();
+      return;
+    }
+
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Payment'),
+        content: Text('Pay ₹${price ?? 0} from your wallet balance?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (BuildContext context) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                },
+              );
+
+              try {
+                // Deduct from wallet using Firebase
+                final priceAmount = (price ?? 0).toDouble();
+                final bookingDescription = hallName != null
+                    ? "Booking payment for $hallName"
+                    : "Banquet Booking Payment";
+
+                final deductionResult = await _firebaseService.deductFromWallet(
+                    priceAmount, bookingDescription);
+
+                // Close loading dialog
+                Navigator.pop(context);
+
+                if (deductionResult) {
+                  // Get updated balance after deduction
+                  final newBalance = await _firebaseService.getWalletBalance();
+
+                  // Generate a unique wallet payment ID
+                  final walletPaymentId = 'wallet_${DateTime.now().millisecondsSinceEpoch}_${userId ?? 0}';
+
+                  // Update booking payment status using the new method
+                  final hallBookingNotifier = ref.read(hallBookingProvider.notifier);
+                  final success = await hallBookingNotifier.updateBookingWithPayment(
+                      hallId: hallId ?? 0,
+                      bookingId: bookingId,
+                      date: date,
+                      slotFromTime: slotFromTime,
+                      slotToTime: slotToTime,
+                      paymentMethod: 'wallet',
+                      paymentId: walletPaymentId,
+                      amount: priceAmount,
+                      isSuccess: true
+                  );
+
+                  if (success) {
+                    // Record the transaction to your backend as well
+                    try {
+                      final transaction = {
+                        'user_id': userId,
+                        'razorpay_payment_id': walletPaymentId,
+                        'razorpay_order_id': '',
+                        'razorpay_signature': '',
+                        'amt': price ?? 0,
+                        'payment_method': 'wallet',
+                        'status': 'success'
+                      };
+
+                      final res = await http.post(
+                        Uri.parse('https://www.gocodedesigners.com/bbtransactionhistory'),
+                        headers: {'Content-Type': 'application/json'},
+                        body: jsonEncode(transaction),
+                      );
+
+                      if (res.statusCode == 201) {
+                        Fluttertoast.showToast(
+                          msg: "Wallet Payment Successful!",
+                          toastLength: Toast.LENGTH_LONG,
+                        );
+
+                        // Update wallet balance in state
+                        setState(() {
+                          _walletBalance = newBalance;
+                        });
+
+                        // Show success dialog with remaining balance
+                        showSuccessDialog(newBalance);
+
+                        // Call the callback function
+                        if (onPaymentSuccess != null) {
+                          onPaymentSuccess!(true);
+                        }
+                      } else {
+                        // Even if transaction recording fails, the payment and booking were successful
+                        Fluttertoast.showToast(
+                            msg: "Payment successful but transaction recording failed",
+                            toastLength: Toast.LENGTH_LONG
+                        );
+
+                        setState(() {
+                          _walletBalance = newBalance;
+                        });
+
+                        // Show success dialog with remaining balance
+                        showSuccessDialog(newBalance);
+
+                        // Call the callback function
+                        if (onPaymentSuccess != null) {
+                          onPaymentSuccess!(true);
+                        }
+                      }
+                    } catch (e) {
+                      Fluttertoast.showToast(msg: "Error saving transaction: $e");
+
+                      // Update wallet balance in state even if there's an error
+                      setState(() {
+                        _walletBalance = newBalance;
+                      });
+
+                      // Show success dialog with remaining balance
+                      showSuccessDialog(newBalance);
+
+                      // Call the callback function
+                      if (onPaymentSuccess != null) {
+                        onPaymentSuccess!(true);
+                      }
+                    }
+                  } else {
+                    Fluttertoast.showToast(
+                      msg: "Wallet payment successful but booking update failed",
+                      toastLength: Toast.LENGTH_LONG,
+                    );
+
+                    // Still notify the parent component of success since money was deducted
+                    if (onPaymentSuccess != null) {
+                      onPaymentSuccess!(true);
+                    }
+                  }
+                } else {
+                  // Wallet deduction failed - could be insufficient balance or other error
+                  Fluttertoast.showToast(
+                    msg: "Wallet payment failed. Please try again or use another payment method.",
+                    toastLength: Toast.LENGTH_LONG,
+                  );
+
+                  // Refresh balance to get current value
+                  _loadWalletBalance();
+                }
+              } catch (e) {
+                // Close loading dialog if still showing
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+
+                Fluttertoast.showToast(
+                  msg: "Error processing wallet payment: $e",
+                  toastLength: Toast.LENGTH_LONG,
+                );
+
+                // Refresh balance to get current value
+                _loadWalletBalance();
+              }
+            },
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
     );
   }
-
   void _openRazorpayPayment() {
     String mobile = _mobileController.text.trim();
     String email = _emailController.text.trim();
@@ -224,7 +530,26 @@ class _PaymentPageState extends State<PaymentPage> {
       );
       return;
     }
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+   /* final orderId = await _createRazorpayOrder();*/
+    // Close loading dialog
+   /* Navigator.pop(context);
 
+    if (orderId == null) {
+      Fluttertoast.showToast(
+        msg: "Failed to create order. Please try again.",
+        toastLength: Toast.LENGTH_LONG,
+      );
+      return;
+    }*/
     int amountInPaise = (price ?? 1) * 100;
 
     var options = {
@@ -253,7 +578,7 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  void _handleWalletPayment() async {
+  /*void _handleWalletPayment() async {
     // Check if wallet has enough balance
     if (_walletBalance < (price ?? 0)) {
       showInsufficientBalanceDialog();
@@ -308,7 +633,7 @@ class _PaymentPageState extends State<PaymentPage> {
                     final transaction = {
                       'user_id': userId,
                       'razorpay_payment_id':
-                          'wallet_${DateTime.now().millisecondsSinceEpoch}',
+                      'wallet_${DateTime.now().millisecondsSinceEpoch}',
                       'razorpay_order_id': '',
                       'razorpay_signature': '',
                       'amt': price ?? 0,
@@ -324,6 +649,9 @@ class _PaymentPageState extends State<PaymentPage> {
                     );
 
                     if (res.statusCode == 201) {
+                      // Update booking status to paid
+                      await _updateBookingStatus(true);
+
                       Fluttertoast.showToast(
                         msg: "Wallet Payment Successful!",
                         toastLength: Toast.LENGTH_LONG,
@@ -345,12 +673,15 @@ class _PaymentPageState extends State<PaymentPage> {
                       // Wallet deduction was successful, but backend recording failed
                       Fluttertoast.showToast(
                           msg:
-                              "Payment successful but transaction recording failed",
+                          "Payment successful but transaction recording failed",
                           toastLength: Toast.LENGTH_LONG);
 
                       setState(() {
                         _walletBalance = newBalance;
                       });
+
+                      // Still update booking status as paid
+                      await _updateBookingStatus(true);
 
                       // Still consider payment successful if wallet deduction worked
                       if (onPaymentSuccess != null) {
@@ -365,6 +696,9 @@ class _PaymentPageState extends State<PaymentPage> {
                       _walletBalance = newBalance;
                     });
 
+                    // Still update booking status to paid
+                    await _updateBookingStatus(true);
+
                     // Still consider payment successful if wallet deduction worked
                     if (onPaymentSuccess != null) {
                       onPaymentSuccess!(true);
@@ -374,7 +708,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   // Wallet deduction failed - could be insufficient balance or other error
                   Fluttertoast.showToast(
                     msg:
-                        "Wallet payment failed. Please try again or use another payment method.",
+                    "Wallet payment failed. Please try again or use another payment method.",
                     toastLength: Toast.LENGTH_LONG,
                   );
 
@@ -401,7 +735,7 @@ class _PaymentPageState extends State<PaymentPage> {
         ],
       ),
     );
-  }
+  }*/
 
   void showInsufficientBalanceDialog() {
     showDialog(
@@ -604,14 +938,14 @@ class _PaymentPageState extends State<PaymentPage> {
                   const Text('My balance', style: TextStyle(fontSize: 16)),
                   _isLoadingWallet
                       ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ))
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ))
                       : Text('₹ $_walletBalance',
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -622,7 +956,7 @@ class _PaymentPageState extends State<PaymentPage> {
               decoration: InputDecoration(
                 labelText: 'Email Address',
                 border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.email),
               ),
             ),
@@ -633,7 +967,7 @@ class _PaymentPageState extends State<PaymentPage> {
               decoration: InputDecoration(
                 labelText: 'Mobile Number',
                 border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.phone),
               ),
             ),
@@ -644,7 +978,7 @@ class _PaymentPageState extends State<PaymentPage> {
               decoration: InputDecoration(
                 labelText: 'Payment Description',
                 border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.description),
               ),
             ),
@@ -754,7 +1088,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   const SizedBox(height: 4),
                   Text(subtitle,
                       style:
-                          TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                      TextStyle(color: Colors.grey.shade600, fontSize: 14)),
                 ],
               ),
             ),

@@ -1,4 +1,4 @@
-// ==================== PROVIDER: hall_booking_provider.dart ====================
+// hall_booking_provider.dart
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -102,6 +102,7 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
       rethrow;
     }
   }
+
   Future<void> updateBookingPaymentStatus({
     required int bookingId,
     required String status,
@@ -122,14 +123,13 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
         "is_paid": status,
       });
 
-      final url = Uri.parse(Bbapi.hallbooking); // <-- Fixed: do NOT append bookingId
+      final url = Uri.parse(Bbapi.hallbooking);
 
       final patchResponse = await http.patch(
         url,
         headers: headers,
         body: patchBody,
       );
-
 
       if (patchResponse.statusCode == 200) {
         state = const AsyncValue.data(null);
@@ -142,7 +142,129 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
+  // Method to cancel a booking
+  Future<bool> cancelBooking({
+    required int bookingId,
+  }) async {
+    state = const AsyncValue.loading();
 
+    try {
+      await updateBookingPaymentStatus(
+        bookingId: bookingId,
+        status: 'cl', // Using 'cl' for cancelled status
+      );
+
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      print("Error cancelling booking: $e");
+      return false;
+    }
+  }
+
+  // Fixed method to match the expected interface in PaymentPage
+  Future<bool> updateBookingWithPayment({
+    required int hallId,
+    required int? bookingId,
+    required String date,
+    required String slotFromTime,
+    required String slotToTime,
+    required String paymentMethod,
+    required String paymentId,
+    required double amount,
+    required bool isSuccess,
+  }) async {
+    state = const AsyncValue.loading();
+
+    try {
+      // Set the payment status code
+      // 'y' = paid/confirmed, 'b' = blocked/pending, 'n' = failed/cancelled
+      final String paymentStatus = isSuccess ? 'y' : 'b';
+
+      // First update the booking payment status
+      await postBooking(
+        hallId: hallId,
+        bookingId: bookingId,
+        date: date,
+        slotFromTime: slotFromTime,
+        slotToTime: slotToTime,
+        isPaid: paymentStatus,
+      );
+
+      // Get the booking ID if not provided (for newly created bookings)
+      int finalBookingId;
+      if (bookingId == null) {
+        finalBookingId = await _getBookingId(
+            hallId: hallId,
+            date: date,
+            slotFromTime: slotFromTime,
+            slotToTime: slotToTime
+        );
+      } else {
+        finalBookingId = bookingId;
+      }
+
+      // If payment is successful, update the status to 'y' (paid/confirmed)
+      if (isSuccess) {
+        await updateBookingPaymentStatus(
+          bookingId: finalBookingId,
+          status: 'y',
+        );
+      }
+
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      print("Error updating booking with payment: $e");
+      return false;
+    }
+  }
+
+  // Helper method to get a booking ID by hall and time details
+  Future<int> _getBookingId({
+    required int hallId,
+    required String date,
+    required String slotFromTime,
+    required String slotToTime,
+  }) async {
+    try {
+      final authState = ref.read(authprovider);
+      int? userId = authState.userId;
+      final token = authState.token;
+
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+
+      final response = await http.get(
+        Uri.parse(Bbapi.hallbooking),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to fetch bookings');
+      }
+
+      final bookings = jsonDecode(response.body)['data'] as List;
+
+      for (var booking in bookings) {
+        if (booking['user_id'] == userId &&
+            booking['hall_id'] == hallId &&
+            booking['date'] == date &&
+            booking['slot_from_time'] == slotFromTime &&
+            booking['slot_to_time'] == slotToTime) {
+          return booking['id'];
+        }
+      }
+
+      throw Exception('Booking not found');
+    } catch (e) {
+      rethrow;
+    }
+  }
 
   Future<List<HallBookingData>> getBookings() async {
     try {
@@ -170,6 +292,7 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
       throw Exception('Error fetching bookings: $e');
     }
   }
+
   Future<int> countUniqueBlockedUsersPerDay(int hallId) async {
     final authState = ref.read(authprovider);
     final headers = {
@@ -205,6 +328,7 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
       throw Exception('Failed to count unique blocked users');
     }
   }
+
   Future<int> countUsersBlockedSameSlot({
     required int hallId,
     required String date,
@@ -235,7 +359,4 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
     final uniqueUserIds = filtered.map((b) => b['user_id']).toSet();
     return uniqueUserIds.length;
   }
-
 }
-
-// Next: The booking screen and calendar logic will follow

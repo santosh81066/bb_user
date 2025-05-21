@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'Colors/coustcolors.dart';
 import 'Providers/auth.dart';
+import 'Screens/contactsupportpage.dart';
 import 'Screens/hallscalendar.dart';
+import 'Screens/helpcenterpage.dart';
 import 'Screens/home.dart';
 import 'Screens/location.dart';
 import 'Screens/login.dart';
@@ -57,7 +59,7 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'BANQUETBOOKZ!',
+      title: 'BANQUETBOOKZ-U',
       theme: ThemeData(
           //colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
@@ -112,6 +114,12 @@ class MyApp extends ConsumerWidget {
         },
         '/notification_settings': (BuildContext context) {
           return NotificationSettingsScreen();
+        },
+        '/contact support': (BuildContext context) {
+          return ContactSupportPage();
+        },
+        '/help center': (BuildContext context) {
+          return HelpCenterPage();
         },
         '/manage_booking': (BuildContext context) {
           return const ManageBookingScreen();
@@ -173,7 +181,7 @@ class _AuthCheckScreenState extends ConsumerState<_AuthCheckScreen> {
           // Based on auto-login result, navigate to appropriate screen
           return snapshot.data == true
               ? ResponsiveNavigation()
-              : const LoginScreen();
+              : const ResponsiveLoginScreen();
         }
       },
     );

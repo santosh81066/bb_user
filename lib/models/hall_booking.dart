@@ -1,35 +1,37 @@
-// ==================== MODELS: hall_booking.dart ====================
-// This file defines the data models and booking status logic for hall booking.
 
 enum BookingStatus {
   available,   // likely represented as '0'
   blocked,     // 'b'
   confirmed,   // 'c'
+  cancelled,   // 'cl'
 }
-
 
 String getBookingStatusName(String code) {
   switch (code) {
-    case BookingStatus.blocked:
+    case 'b':
       return 'Blocked';
-    case BookingStatus.confirmed:
+    case 'c':
       return 'Confirmed';
-    case BookingStatus.available:
+    case 'cl':
+      return 'Cancelled';
+    case '0':
     default:
       return 'Available';
   }
 }
+
 String bookingStatusToString(BookingStatus status) {
   switch (status) {
     case BookingStatus.confirmed:
       return 'c';
     case BookingStatus.blocked:
       return 'b';
+    case BookingStatus.cancelled:
+      return 'cl';
     case BookingStatus.available:
-    return '0';
+      return '0';
   }
 }
-
 
 class HallBookingRequest {
   final int? id;
@@ -152,5 +154,3 @@ class HallBookingData {
     );
   }
 }
-
-// Next: Provider + Notifier will be added
