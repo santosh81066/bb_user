@@ -6,14 +6,15 @@ import '../Providers/wallet.dart';
 import '../Screens/firebase.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
-  const WalletScreen({Key? key}) : super(key: key);
+  const WalletScreen({super.key});
 
   @override
   ConsumerState<WalletScreen> createState() => _WalletScreenState();
 }
 
 class _WalletScreenState extends ConsumerState<WalletScreen> {
-  final TextEditingController _amountController = TextEditingController(text: '10');
+  final TextEditingController _amountController =
+      TextEditingController(text: '10');
   late Razorpay _razorpay;
   final _firebaseService = FirebaseRealtimeService();
   bool _isProcessingPayment = false;
@@ -24,9 +25,22 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     _setupRazorpay();
 
     // Load wallet data when screen initializes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // First ensure Firebase is authenticated before trying to load wallet data
+      await _firebaseService.ensureAuthenticated();
       _loadWalletData();
     });
+  }
+
+  Future<void> _initializeAuth() async {
+    final isAuthenticated = await _firebaseService.ensureAuthenticated();
+    if (!isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Failed to connect to services. Please restart the app.')),
+      );
+    }
   }
 
   // Moved to separate method for easier calling
@@ -63,7 +77,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     if (amount != null) {
       try {
         // Add amount to wallet using the wallet provider
-        final success = await ref.read(walletProvider.notifier).addToWallet(amount);
+        final success =
+            await ref.read(walletProvider.notifier).addToWallet(amount);
 
         // Force a reload of wallet data
         await Future.delayed(const Duration(milliseconds: 500));
@@ -71,10 +86,13 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('₹$amount added to wallet! Payment ID: ${response.paymentId}')),
+            SnackBar(
+                content: Text(
+                    '₹$amount added to wallet! Payment ID: ${response.paymentId}')),
           );
         } else {
-          final errorMsg = ref.read(walletProvider).error ?? 'Failed to add money';
+          final errorMsg =
+              ref.read(walletProvider).error ?? 'Failed to add money';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(errorMsg)),
           );
@@ -99,7 +117,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
   void _handleExternalWallet(ExternalWalletResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('External wallet selected: ${response.walletName}')),
+      SnackBar(
+          content: Text('External wallet selected: ${response.walletName}')),
     );
   }
 
@@ -177,7 +196,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               );
 
               // Process payment using wallet provider
-              final success = await ref.read(walletProvider.notifier)
+              final success = await ref
+                  .read(walletProvider.notifier)
                   .makePayment(amount, 'Payment for booking');
 
               // Force a reload of wallet data
@@ -190,7 +210,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 );
               } else {
                 // Error message is handled in the wallet provider
-                final errorMsg = ref.read(walletProvider).error ?? 'Payment failed';
+                final errorMsg =
+                    ref.read(walletProvider).error ?? 'Payment failed';
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(errorMsg)),
                 );
@@ -239,210 +260,238 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       body: walletState.isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-        onRefresh: _refreshWalletData,
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              height: 50,
-              decoration: const BoxDecoration(
-                color: Color(0xFF6418C3),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.indigo.shade200),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              onRefresh: _refreshWalletData,
+              child: Column(
                 children: [
-                  const Text('My balance', style: TextStyle(fontSize: 16)),
-                  Text('₹${walletState.balance}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-            // Error message if there is one
-            if (walletState.error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Text(
-                  walletState.error!,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            const SizedBox(height: 30),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Add Money', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TextFormField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('₹', style: TextStyle(fontSize: 22)),
+                  Container(
+                    width: double.infinity,
+                    height: 50,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF6418C3),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(30),
+                        bottomRight: Radius.circular(30),
+                      ),
+                    ),
                   ),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  const SizedBox(height: 20),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.indigo.shade200),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('My balance',
+                            style: TextStyle(fontSize: 16)),
+                        Text('₹${walletState.balance}',
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF6418C3), width: 2),
+                  // Error message if there is one
+                  if (walletState.error != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 8),
+                      child: Text(
+                        walletState.error!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  const SizedBox(height: 30),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Add Money',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                    ),
                   ),
-                ),
-                style: const TextStyle(fontSize: 18),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _amountButton('₹ 200', () => _amountController.text = '200'),
-                  _amountButton('₹ 1000', () => _amountController.text = '1000'),
-                  _amountButton('₹ 2000', () => _amountController.text = '2000'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: walletState.isLoading || _isProcessingPayment ? null : _startRazorpayPayment,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6418C3),
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: TextFormField(
+                      controller: _amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        prefixIcon: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text('₹', style: TextStyle(fontSize: 22)),
+                        ),
+                        prefixIconConstraints:
+                            const BoxConstraints(minWidth: 0, minHeight: 0),
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
                         ),
-                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF6418C3), width: 2),
+                        ),
                       ),
-                      child: walletState.isLoading || _isProcessingPayment
-                          ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                          : const Text('Add Money'),
+                      style: const TextStyle(fontSize: 18),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: walletState.isLoading || _isProcessingPayment ? null : _makePaymentFromWallet,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      child: walletState.isLoading || _isProcessingPayment
-                          ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                          : const Text('Pay from Wallet'),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _amountButton(
+                            '₹ 200', () => _amountController.text = '200'),
+                        _amountButton(
+                            '₹ 1000', () => _amountController.text = '1000'),
+                        _amountButton(
+                            '₹ 2000', () => _amountController.text = '2000'),
+                      ],
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed:
+                                walletState.isLoading || _isProcessingPayment
+                                    ? null
+                                    : _startRazorpayPayment,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6418C3),
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            child: walletState.isLoading || _isProcessingPayment
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Add Money'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed:
+                                walletState.isLoading || _isProcessingPayment
+                                    ? null
+                                    : _makePaymentFromWallet,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            child: walletState.isLoading || _isProcessingPayment
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Pay from Wallet'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Recent Transactions',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: walletState.transactions.isEmpty
+                        ? const Center(child: Text('No transactions yet'))
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: walletState.transactions.length,
+                            itemBuilder: (context, index) {
+                              final transaction =
+                                  walletState.transactions[index];
+                              final isCredit = transaction['type'] == 'credit';
+
+                              // Handle different timestamp formats
+                              final timestamp = transaction['timestamp'] is int
+                                  ? DateTime.fromMillisecondsSinceEpoch(
+                                      transaction['timestamp'] as int)
+                                  : transaction['timestamp'] is DateTime
+                                      ? transaction['timestamp']
+                                      : DateTime.now();
+
+                              final formattedDate =
+                                  '${timestamp.day.toString().padLeft(2, '0')}/'
+                                  '${timestamp.month.toString().padLeft(2, '0')}/'
+                                  '${timestamp.year} '
+                                  '${timestamp.hour.toString().padLeft(2, '0')}:'
+                                  '${timestamp.minute.toString().padLeft(2, '0')}';
+
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                child: ListTile(
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: isCredit
+                                          ? Colors.green.withOpacity(0.1)
+                                          : Colors.red.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      isCredit ? Icons.add : Icons.remove,
+                                      color:
+                                          isCredit ? Colors.green : Colors.red,
+                                    ),
+                                  ),
+                                  title: Text(transaction['description'] ??
+                                      'Transaction'),
+                                  subtitle: Text(formattedDate),
+                                  trailing: Text(
+                                    '${isCredit ? '+' : '-'} ₹${transaction['amount']}',
+                                    style: TextStyle(
+                                      color:
+                                          isCredit ? Colors.green : Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 30),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Recent Transactions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: walletState.transactions.isEmpty
-                  ? const Center(child: Text('No transactions yet'))
-                  : ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: walletState.transactions.length,
-                itemBuilder: (context, index) {
-                  final transaction = walletState.transactions[index];
-                  final isCredit = transaction['type'] == 'credit';
-
-                  // Handle different timestamp formats
-                  final timestamp = transaction['timestamp'] is int
-                      ? DateTime.fromMillisecondsSinceEpoch(
-                      transaction['timestamp'] as int)
-                      : transaction['timestamp'] is DateTime
-                      ? transaction['timestamp']
-                      : DateTime.now();
-
-                  final formattedDate =
-                      '${timestamp.day.toString().padLeft(2, '0')}/'
-                      '${timestamp.month.toString().padLeft(2, '0')}/'
-                      '${timestamp.year} '
-                      '${timestamp.hour.toString().padLeft(2, '0')}:'
-                      '${timestamp.minute.toString().padLeft(2, '0')}';
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isCredit ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isCredit ? Icons.add : Icons.remove,
-                          color: isCredit ? Colors.green : Colors.red,
-                        ),
-                      ),
-                      title: Text(transaction['description'] ?? 'Transaction'),
-                      subtitle: Text(formattedDate),
-                      trailing: Text(
-                        '${isCredit ? '+' : '-'} ₹${transaction['amount']}',
-                        style: TextStyle(
-                          color: isCredit ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

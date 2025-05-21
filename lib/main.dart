@@ -1,4 +1,4 @@
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -21,12 +21,31 @@ import 'Screens/walletscreen.dart';
 import 'Widgets/bottomnavigation.dart';
 import 'firebase_options.dart';
 
-void main() async {
+Future<void> initializeFirebase() async {
   WidgetsFlutterBinding.ensureInitialized();
-   await Firebase.initializeApp(
-     options: DefaultFirebaseOptions.currentPlatform,
-   );
 
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Try to sign in anonymously on app start
+  try {
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    if (auth.currentUser == null) {
+      await auth.signInAnonymously();
+      print('Anonymous auth successful on app start');
+    } else {
+      print('Already authenticated: ${auth.currentUser!.uid}');
+    }
+  } catch (e) {
+    print('Error during initial authentication: $e');
+  }
+}
+
+void main() async {
+  await initializeFirebase();
+
+  WidgetsFlutterBinding.ensureInitialized();
 
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -152,7 +171,9 @@ class _AuthCheckScreenState extends ConsumerState<_AuthCheckScreen> {
           return const Center(child: CircularProgressIndicator());
         } else {
           // Based on auto-login result, navigate to appropriate screen
-          return snapshot.data == true ? ResponsiveNavigation() : const LoginScreen();
+          return snapshot.data == true
+              ? ResponsiveNavigation()
+              : const LoginScreen();
         }
       },
     );

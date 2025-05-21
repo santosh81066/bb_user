@@ -30,23 +30,22 @@ class WalletState {
   }
 }
 
-// Wallet notifier
+// Wallet notifier with debug logs
 class WalletNotifier extends StateNotifier<WalletState> {
   final FirebaseRealtimeService _firebaseService;
 
   WalletNotifier(this._firebaseService)
       : super(WalletState(
-    balance: 0.0,
-    transactions: [],
-    isLoading: false,
-  ));
+          balance: 0.0,
+          transactions: [],
+          isLoading: false,
+        ));
 
   // IMPROVED: Use single method to get all wallet data efficiently
   Future<void> loadWalletData() async {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      // Use the new getWalletSummary method for efficiency
       final walletData = await _firebaseService.getWalletSummary();
 
       print("Loaded wallet balance: ${walletData['balance']}");
@@ -54,9 +53,10 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
       state = state.copyWith(
         balance: walletData['balance'] as double,
-        transactions: List<Map<String, dynamic>>.from(walletData['transactions']),
+        transactions:
+            List<Map<String, dynamic>>.from(walletData['transactions']),
         isLoading: false,
-        error: null, // Clear any previous errors
+        error: null,
       );
     } catch (e) {
       print("Error in loadWalletData: $e");
@@ -71,22 +71,33 @@ class WalletNotifier extends StateNotifier<WalletState> {
   Future<bool> addToWallet(double amount) async {
     if (amount <= 0) {
       state = state.copyWith(error: 'Amount must be greater than zero');
+      print('addToWallet error: Amount must be greater than zero');
       return false;
     }
 
-    // Validate amount is not too large (optional safety check)
     if (amount > 100000) {
-      state = state.copyWith(error: 'Amount is too large. Maximum allowed is ₹100,000');
+      state = state.copyWith(
+          error: 'Amount is too large. Maximum allowed is ₹100,000');
+      print('addToWallet error: Amount too large');
       return false;
     }
 
     state = state.copyWith(isLoading: true, error: null);
+    print('Starting addToWallet with amount: ₹$amount');
 
     try {
-      final success = await _firebaseService.addToWallet(amount);
+      // Try the transaction approach first
+      bool success = await _firebaseService.addToWallet(amount);
+
+      // If it fails, try the fallback approach
+      if (!success) {
+        print('Transaction approach failed, trying fallback');
+        success = await _firebaseService.addToWalletFallback(amount);
+      }
+
+      print('addToWallet result: $success');
 
       if (success) {
-        // Reload data from database to ensure consistency
         await loadWalletData();
         return true;
       } else {
@@ -121,14 +132,16 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
     // Check balance before making API call
     if (state.balance < amount) {
-      state = state.copyWith(error: 'Insufficient balance. Current balance: ₹${state.balance}');
+      state = state.copyWith(
+          error: 'Insufficient balance. Current balance: ₹${state.balance}');
       return false;
     }
 
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final success = await _firebaseService.deductFromWallet(amount, description.trim());
+      final success =
+          await _firebaseService.deductFromWallet(amount, description.trim());
 
       if (success) {
         // Reload data from database to ensure consistency
@@ -165,7 +178,8 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
       state = state.copyWith(
         balance: walletData['balance'] as double,
-        transactions: List<Map<String, dynamic>>.from(walletData['transactions']),
+        transactions:
+            List<Map<String, dynamic>>.from(walletData['transactions']),
         error: null,
       );
     } catch (e) {
@@ -176,11 +190,13 @@ class WalletNotifier extends StateNotifier<WalletState> {
 }
 
 // Create providers
-final firebaseRealtimeServiceProvider = Provider<FirebaseRealtimeService>((ref) {
+final firebaseRealtimeServiceProvider =
+    Provider<FirebaseRealtimeService>((ref) {
   return FirebaseRealtimeService();
 });
 
-final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((ref) {
+final walletProvider =
+    StateNotifierProvider<WalletNotifier, WalletState>((ref) {
   final firebaseService = ref.watch(firebaseRealtimeServiceProvider);
   return WalletNotifier(firebaseService);
 });
