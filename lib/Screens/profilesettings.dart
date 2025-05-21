@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Widgets/evaluatedbutton.dart';
+import '../utils/bbapi.dart';
 
 class ProfileSetingsScreen extends ConsumerStatefulWidget {
   const ProfileSetingsScreen({Key? key}) : super(key: key);
@@ -54,7 +55,7 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
       final prefs = await SharedPreferences.getInstance();
       if (prefs.containsKey('userData')) {
         final extractData =
-            json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+        json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
         print("User data loaded after refresh: $extractData");
 
         // Update the UI with this fresh data
@@ -63,6 +64,9 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
           sEmail = extractData['email'] ?? "";
           sNum = extractData['mobile_no'] ?? "";
           profilePicUrl = extractData['profile_pic'];
+
+          // Debug profile pic URL
+          print("Profile Pic URL: $profilePicUrl");
 
           _edtxtName.text = sUsername;
           _edtxtMail.text = sEmail;
@@ -81,7 +85,7 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
   Future<void> _selectImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? pickedImage =
-        await picker.pickImage(source: ImageSource.gallery);
+    await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedImage != null) {
       setState(() {
@@ -115,7 +119,7 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
         });
 
         // Force a small delay to ensure SharedPreferences has been updated
-        await Future.delayed(Duration(milliseconds: 300));
+        await Future.delayed(Duration(milliseconds: 500));
 
         // Force refresh from SharedPreferences
         await ref.read(authprovider.notifier).refreshUserData();
@@ -129,12 +133,68 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
         );
       } catch (e) {
         print("Error updating profile: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating profile: $e')),
+        );
       } finally {
         if (mounted) {
           setState(() => _isLoading = false);
         }
       }
     }
+  }
+
+  Widget _buildProfileImage() {
+    return GestureDetector(
+      onTap: _selectImage,
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 60,
+            backgroundColor: Colors.grey[300],
+            backgroundImage: _getProfileImage(),
+            child: _showDefaultIcon()
+                ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                : null,
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(8),
+              child: const Icon(
+                Icons.camera_alt,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  ImageProvider? _getProfileImage() {
+    if (_profileImage != null) {
+      return FileImage(_profileImage!);
+    } else if (profilePicUrl != null && profilePicUrl!.isNotEmpty) {
+      // Check if the URL needs to be prefixed with a base URL
+      if (!profilePicUrl!.startsWith('http')) {
+        // Add your API base URL here if needed
+        final baseUrl = Bbapi.baseUrl; // Replace with your actual API base URL
+        return NetworkImage('$baseUrl$profilePicUrl');
+      }
+      return NetworkImage(profilePicUrl!);
+    }
+    return null;
+  }
+
+  bool _showDefaultIcon() {
+    return _profileImage == null && (profilePicUrl == null || profilePicUrl!.isEmpty);
   }
 
   @override
@@ -144,187 +204,148 @@ class _ProfileSetingsScreenState extends ConsumerState<ProfileSetingsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              child: Column(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: 90,
-                    decoration: const BoxDecoration(
-                        color: Color(0xFF6418C3),
-                        shape: BoxShape.rectangle,
-                        borderRadius: BorderRadiusDirectional.only(
-                            bottomEnd: Radius.circular(25),
-                            bottomStart: Radius.circular(25))),
-                    child: const Padding(
-                      padding: EdgeInsets.only(top: 20.0, left: 15),
-                      child: Text("Profile Settings",
-                          style: TextStyle(
-                              color: CoustColors.colrEdtxt4, fontSize: 20)),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(30.0),
-                    child: Form(
-                      key: _validationkey,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Profile Picture Section
-                          Center(
-                            child: GestureDetector(
-                              onTap: _selectImage,
-                              child: Stack(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 60,
-                                    backgroundColor: Colors.grey[300],
-                                    backgroundImage: _profileImage != null
-                                        ? FileImage(_profileImage!)
-                                            as ImageProvider
-                                        : (profilePicUrl != null &&
-                                                profilePicUrl!.isNotEmpty
-                                            ? NetworkImage(profilePicUrl!)
-                                            : null),
-                                    child: (_profileImage == null &&
-                                            (profilePicUrl == null ||
-                                                profilePicUrl!.isEmpty))
-                                        ? const Icon(Icons.person,
-                                            size: 60, color: Colors.grey)
-                                        : null,
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).primaryColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      padding: const EdgeInsets.all(8),
-                                      child: const Icon(
-                                        Icons.camera_alt,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Username field
-                          CoustTextfield(
-                            isVisible: true,
-                            title: "Name",
-                            controller: _edtxtName,
-                            inputtype: TextInputType.name,
-                            hint: "Enter username",
-                            radius: 8,
-                            width: 10,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter Name';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 15),
-
-                          // Email field
-                          CoustTextfield(
-                            isVisible: true,
-                            title: "Email",
-                            controller: _edtxtMail,
-                            inputtype: TextInputType.emailAddress,
-                            hint: "Enter email",
-                            radius: 8,
-                            width: 10,
-                            validator: (value) {
-                              final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter an email address';
-                              } else if (!emailRegex.hasMatch(value)) {
-                                return 'Please enter a valid email address';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 15),
-
-                          // Phone number field
-                          CoustTextfield(
-                            isVisible: true,
-                            title: "Phone Number",
-                            controller: _edtxtNum,
-                            inputtype: TextInputType.phone,
-                            hint: "Enter phone number",
-                            radius: 8,
-                            width: 10,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter Mobile Number';
-                              }
-                              if (value.length != 10) {
-                                return 'Please enter 10 digit Mobile Number';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 15),
-
-                          // Password field (for changing password)
-                          TextFormField(
-                            controller: _edtxtPassword,
-                            obscureText: !_showPassword,
-                            decoration: InputDecoration(
-                              labelText: "New Password (Optional)",
-                              hintText: "Leave empty to keep current password",
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _showPassword
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _showPassword = !_showPassword;
-                                  });
-                                },
-                              ),
-                            ),
-                            validator: (value) {
-                              // Password validation only if a value is provided
-                              if (value != null &&
-                                  value.isNotEmpty &&
-                                  value.length < 6) {
-                                return 'Password must be at least 6 characters';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 30),
-
-                          // Update button
-                          CoustEvalButton(
-                            onPressed: _handleProfileUpdate,
-                            buttonName: "Update",
-                            radius: 8,
-                            width: double.infinity,
-                            FontSize: 20,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              height: 90,
+              decoration: const BoxDecoration(
+                  color: Color(0xFF6418C3),
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadiusDirectional.only(
+                      bottomEnd: Radius.circular(25),
+                      bottomStart: Radius.circular(25))),
+              child: const Padding(
+                padding: EdgeInsets.only(top: 20.0, left: 15),
+                child: Text("Profile Settings",
+                    style: TextStyle(
+                        color: CoustColors.colrEdtxt4, fontSize: 20)),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.all(30.0),
+              child: Form(
+                key: _validationkey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Profile Picture Section
+                    Center(
+                      child: _buildProfileImage(),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Username field
+                    CoustTextfield(
+                      isVisible: true,
+                      title: "Name",
+                      controller: _edtxtName,
+                      inputtype: TextInputType.name,
+                      hint: "Enter username",
+                      radius: 8,
+                      width: 10,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter Name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Email field
+                    CoustTextfield(
+                      isVisible: true,
+                      title: "Email",
+                      controller: _edtxtMail,
+                      inputtype: TextInputType.emailAddress,
+                      hint: "Enter email",
+                      radius: 8,
+                      width: 10,
+                      validator: (value) {
+                        final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter an email address';
+                        } else if (!emailRegex.hasMatch(value)) {
+                          return 'Please enter a valid email address';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Phone number field
+                    CoustTextfield(
+                      isVisible: true,
+                      title: "Phone Number",
+                      controller: _edtxtNum,
+                      inputtype: TextInputType.phone,
+                      hint: "Enter phone number",
+                      radius: 8,
+                      width: 10,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter Mobile Number';
+                        }
+                        if (value.length != 10) {
+                          return 'Please enter 10 digit Mobile Number';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Password field (for changing password)
+                    TextFormField(
+                      controller: _edtxtPassword,
+                      obscureText: !_showPassword,
+                      decoration: InputDecoration(
+                        labelText: "New Password (Optional)",
+                        hintText: "Leave empty to keep current password",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showPassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _showPassword = !_showPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        // Password validation only if a value is provided
+                        if (value != null &&
+                            value.isNotEmpty &&
+                            value.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 30),
+
+                    // Update button
+                    CoustEvalButton(
+                      onPressed: _handleProfileUpdate,
+                      buttonName: "Update",
+                      radius: 8,
+                      width: double.infinity,
+                      FontSize: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

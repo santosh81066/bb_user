@@ -255,7 +255,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     const url = Bbapi.update_user;
     final prefs = await SharedPreferences.getInstance();
     final extractData =
-        json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+    json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
     String token = extractData['access_token'];
     String usertype = extractData['user_role'];
     int userId = extractData['user_id'];
@@ -294,8 +294,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
-      var userDetails = json.decode(response.body);
 
+      // Debug response
+      print("Profile update response status: ${response.statusCode}");
+      print("Profile update response body: ${response.body}");
+
+      var userDetails = json.decode(response.body);
 
       switch (response.statusCode) {
         case 200:
@@ -307,6 +311,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           var updatedMobileNo = userDetails["mobile_no"] ?? phonenum;
           var updatedProfilePic = userDetails["profile_pic"];
 
+          // Debug profile pic data
+          print("Updated profile pic URL: $updatedProfilePic");
 
           // Update local state with new data
           state = state.copyWith(
@@ -317,8 +323,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
               mobileno: updatedMobileNo,
               profilePic: updatedProfilePic,
               usertype: usertype);
-
-          // Log the state after update
 
           // Save updated data to SharedPreferences
           final userData = json.encode({
@@ -335,7 +339,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
           // Verify the data was saved correctly
           final verifyData =
-              json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+          json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+          print("Verified saved userData: $verifyData");
 
           // Show success message
           showDialog(
@@ -355,8 +360,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
               );
             },
           );
-
-          // REMOVED: Navigator.of(context).pushNamed('/');
           break;
 
         case 400:
@@ -426,10 +429,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.containsKey('userData')) {
       final extractData =
-          json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+      json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
+
+      print("Refreshing user data: $extractData");
 
       // Force state update with refreshed data
       state = AuthState.fromJson(extractData);
+
+      // Debug the state after updating
+      print("State after refresh - profilePic: ${state.profilePic}");
 
       // Emit notification that state has changed
       state = state.copyWith(); // This forces listeners to update

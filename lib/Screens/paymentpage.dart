@@ -28,20 +28,41 @@ class _PaymentPageState extends State<PaymentPage> {
   late int? price;
   int? userId;
   late Function(bool)? onPaymentSuccess;
+  double _walletBalance = 200; // Initial wallet balance
 
   @override
   void initState() {
     super.initState();
     _initializeRazorpay();
     _loadUserId();
+    _loadWalletBalance();
     _descriptionController.text = "Banquet Booking Payment";
   }
+
   Future<void> _loadUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       userId = prefs.getInt('user_id');
     });
   }
+
+  Future<void> _loadWalletBalance() async {
+    // In a real app, you would fetch this from an API or local storage
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _walletBalance = prefs.getDouble('wallet_balance') ?? 200;
+    });
+  }
+
+  Future<void> _updateWalletBalance(double newBalance) async {
+    // Update the wallet balance in SharedPreferences
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('wallet_balance', newBalance);
+    setState(() {
+      _walletBalance = newBalance;
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -63,6 +84,7 @@ class _PaymentPageState extends State<PaymentPage> {
       }
     }
   }
+
   @override
   void dispose() {
     _razorpay.clear();
@@ -97,6 +119,7 @@ class _PaymentPageState extends State<PaymentPage> {
         'razorpay_order_id': response.orderId,
         'razorpay_signature': response.signature,
         'amt': price ?? 1,
+        'payment_method': 'razorpay'
       };
 
       final res = await http.post(
@@ -115,7 +138,6 @@ class _PaymentPageState extends State<PaymentPage> {
       Fluttertoast.showToast(msg: "Error saving transaction: $e");
     }
   }
-
 
   void _handlePaymentError(PaymentFailureResponse response) async {
     Fluttertoast.showToast(
@@ -139,7 +161,8 @@ class _PaymentPageState extends State<PaymentPage> {
         'razorpay_order_id': '',   // You can store attempt info if available
         'razorpay_signature': '',
         'amt': price ?? 1,
-        'status': 'failed'
+        'status': 'failed',
+        'payment_method': 'razorpay'
       };
 
       final res = await http.post(
@@ -160,9 +183,7 @@ class _PaymentPageState extends State<PaymentPage> {
     if (onPaymentSuccess != null) {
       onPaymentSuccess!(false);
     }
-
   }
-
 
   void _handleExternalWallet(ExternalWalletResponse response) {
     Fluttertoast.showToast(
@@ -170,8 +191,6 @@ class _PaymentPageState extends State<PaymentPage> {
       toastLength: Toast.LENGTH_SHORT,
     );
   }
-
-
 
   void _openRazorpayPayment() {
     String mobile = _mobileController.text.trim();
@@ -213,11 +232,15 @@ class _PaymentPageState extends State<PaymentPage> {
       );
     }
   }
-  void _handleWalletPayment() {
-    // Implement wallet payment logic
-    // Here you would check if the wallet has enough balance
 
-    // For demonstration, let's assume wallet payment is successful
+  void _handleWalletPayment() async {
+    // Check if wallet has enough balance
+    if (_walletBalance < (price ?? 0)) {
+      showInsufficientBalanceDialog();
+      return;
+    }
+
+    // Show confirmation dialog
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -229,22 +252,52 @@ class _PaymentPageState extends State<PaymentPage> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context); // Close dialog
 
-              // Simulate successful payment
-              Fluttertoast.showToast(
-                msg: "Wallet Payment Successful!",
-                toastLength: Toast.LENGTH_SHORT,
-              );
+              // Calculate new balance
+              double newBalance = _walletBalance - (price ?? 0);
 
-              // Call the callback function
-              if (onPaymentSuccess != null) {
-                onPaymentSuccess!(true);
+              // Update wallet balance
+              await _updateWalletBalance(newBalance);
+
+              // Record the transaction
+              try {
+                final transaction = {
+                  'user_id': userId,
+                  'razorpay_payment_id': 'wallet_${DateTime.now().millisecondsSinceEpoch}',
+                  'razorpay_order_id': '',
+                  'razorpay_signature': '',
+                  'amt': price ?? 0,
+                  'payment_method': 'wallet',
+                  'status': 'success'
+                };
+
+                final res = await http.post(
+                  Uri.parse('https://www.gocodedesigners.com/bbtransactionhistory'),
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode(transaction),
+                );
+
+                if (res.statusCode == 201) {
+                  Fluttertoast.showToast(
+                    msg: "Wallet Payment Successful! Remaining balance: ₹$newBalance",
+                    toastLength: Toast.LENGTH_LONG,
+                  );
+
+                  // Show success dialog with remaining balance
+                  showSuccessDialog(newBalance);
+
+                  // Call the callback function
+                  if (onPaymentSuccess != null) {
+                    onPaymentSuccess!(true);
+                  }
+                } else {
+                  Fluttertoast.showToast(msg: "Transaction save failed: ${res.body}");
+                }
+              } catch (e) {
+                Fluttertoast.showToast(msg: "Error saving transaction: $e");
               }
-
-              // Return to previous screen
-              Navigator.pop(context);
             },
             child: const Text('Confirm'),
           ),
@@ -252,11 +305,84 @@ class _PaymentPageState extends State<PaymentPage> {
       ),
     );
   }
+
+  void showInsufficientBalanceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Insufficient Balance'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Your wallet balance (₹$_walletBalance) is less than the required amount (₹${price ?? 0}).'),
+            const SizedBox(height: 16),
+            const Text('Would you like to add money to your wallet?'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const WalletScreen(),
+                  )
+              ).then((_) {
+                // Refresh wallet balance when returning from WalletScreen
+                _loadWalletBalance();
+              });
+            },
+            child: const Text('Add Money'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showSuccessDialog(double remainingBalance) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Payment Successful'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: 60,
+            ),
+            const SizedBox(height: 16),
+            Text('₹${price ?? 0} has been deducted from your wallet.'),
+            const SizedBox(height: 8),
+            Text('Remaining balance: ₹$remainingBalance',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Return to previous screen
+            },
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar:PreferredSize(
+      appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80), // height of AppBar
         child: ClipRRect(
           borderRadius: const BorderRadius.only(
@@ -366,11 +492,14 @@ class _PaymentPageState extends State<PaymentPage> {
                 border: Border.all(color: CoustColors.colrStrock1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('My balance', style: TextStyle(fontSize: 16)),
-                  Text('200', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('My balance', style: TextStyle(fontSize: 16)),
+                  Text(
+                      '₹ $_walletBalance',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                  ),
                 ],
               ),
             ),
@@ -411,7 +540,7 @@ class _PaymentPageState extends State<PaymentPage> {
               isSelected: _selectedPaymentMethod == 0,
               icon: Icons.account_balance_wallet,
               title: 'Pay from Wallet',
-              subtitle: 'Available Balance: ₹ 200',
+              subtitle: 'Available Balance: ₹ $_walletBalance',
               onTap: () => setState(() => _selectedPaymentMethod = 0),
             ),
             const SizedBox(height: 10),
@@ -428,7 +557,7 @@ class _PaymentPageState extends State<PaymentPage> {
               child: ElevatedButton(
                 onPressed: () {
                   if (_selectedPaymentMethod == 0) {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen()));
+                    _handleWalletPayment();
                   } else {
                     _openRazorpayPayment();
                   }
@@ -464,6 +593,7 @@ class _PaymentPageState extends State<PaymentPage> {
       ),
     );
   }
+
   Widget _buildPaymentMethodOption({
     required bool isSelected,
     required IconData icon,

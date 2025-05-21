@@ -123,8 +123,6 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
       });
 
       final url = Uri.parse(Bbapi.hallbooking); // <-- Fixed: do NOT append bookingId
-      print('PATCH URL: $url');
-      print('PATCH BODY: $patchBody');
 
       final patchResponse = await http.patch(
         url,
@@ -132,8 +130,6 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
         body: patchBody,
       );
 
-      print('PATCH STATUS: ${patchResponse.statusCode}');
-      print('PATCH RESPONSE: ${patchResponse.body}');
 
       if (patchResponse.statusCode == 200) {
         state = const AsyncValue.data(null);
@@ -141,7 +137,6 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
         throw Exception('Failed to update booking payment status');
       }
     } catch (e, st) {
-      print('PATCH ERROR: $e');
       state = AsyncValue.error(e, st);
       rethrow;
     }

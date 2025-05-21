@@ -11,7 +11,7 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
 
   ReviewsNotifier(this.ref) : super(const AsyncValue.loading());
 
-  Future<void> fetchReviews(Hall hall) async {
+  Future<void> fetchReviews(dynamic venueType) async {
     state = const AsyncValue.loading();
 
     try {
@@ -22,7 +22,6 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
       print("Fetching reviews with token: ${authState.token}");
 
       // Make API request - fixing the endpoint URL
-      // Note: The endpoint might be '/getreview' instead of '/bbaddreview'
       final response = await http.get(
         Uri.parse('http://www.gocodedesigners.com/bbaddreview'),
         headers: {
@@ -41,7 +40,7 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
         if (responseData['success'] == true && responseData['data'] != null) {
           final reviewsData = responseData['data'] as List<dynamic>;
           final reviews =
-              reviewsData.map((review) => Review.fromJson(review)).toList();
+          reviewsData.map((review) => Review.fromJson(review)).toList();
 
           // Get properties data to populate names
           final propertyState = ref.read(propertyNotifierProvider);
@@ -93,7 +92,7 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
   }
 }
 
-final reviewsProvider =
-    StateNotifierProvider<ReviewsNotifier, AsyncValue<List<Review>>>(
-  (ref) => ReviewsNotifier(ref),
-);
+// Fix: Adding ref to the provider
+final reviewsProvider = StateNotifierProvider<ReviewsNotifier, AsyncValue<List<Review>>>((ref) {
+  return ReviewsNotifier(ref); // Pass ref to the notifier
+});

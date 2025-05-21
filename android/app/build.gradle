@@ -1,5 +1,8 @@
 plugins {
     id "com.android.application"
+    // START: FlutterFire Configuration
+    id 'com.google.gms.google-services'
+    // END: FlutterFire Configuration
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin" // Flutter plugin
 }
@@ -22,28 +25,27 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.bbuser"
-    compileSdk = 35// Specify the correct compileSdkVersion
+    compileSdk = 35 // Specify the correct compileSdkVersion
 
     defaultConfig {
         applicationId = "com.bbuser"
-        minSdk = 21 // Update as per your project requirements
+        minSdk = 23 // Update as per your project requirements
         targetSdk = 34
-        versionCode = flutterVersionCode.toInteger()
+        versionCode = 12
         versionName = flutterVersionName
     }
-
-//    signingConfigs {
-//        release {
-//            keyAlias keystoreProperties['keyAlias']
-//            keyPassword keystoreProperties['keyPassword']
-//            storeFile file(keystoreProperties['storeFile'])
-//            storePassword keystoreProperties['storePassword']
-//        }
-//    }
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+    }
 
     buildTypes {
         release {
-            //signingConfig signingConfigs.release
+            signingConfig signingConfigs.release
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -65,8 +67,11 @@ flutter {
 }
 
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:31.5.0')
-    implementation 'com.google.firebase:firebase-analytics-ktx'
-    implementation 'com.google.firebase:firebase-messaging:21.1.0'
-    implementation 'com.google.firebase:firebase-auth:21.0.1'
+    // Update Firebase dependencies to compatible versions
+    implementation platform('com.google.firebase:firebase-bom:32.5.0')
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-messaging:23.2.1'
+    implementation 'com.google.firebase:firebase-auth:22.3.0'
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.core:core:1.12.0'
 }

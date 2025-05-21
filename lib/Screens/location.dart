@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
@@ -32,6 +32,25 @@ class _LocationScreenState extends State<LocationScreen> {
       }
     }
   }
+   void _openInGoogleMaps() async {
+     final lat = _currentLatLng.latitude;
+     final lon = _currentLatLng.longitude;
+
+     final Uri googleMapsUrl = Uri.parse("geo:$lat,$lon?q=$lat,$lon");
+
+     if (await canLaunchUrl(googleMapsUrl)) {
+       await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+     } else {
+       final fallbackUrl = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
+       if (await canLaunchUrl(fallbackUrl)) {
+         await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+       } else {
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+           content: Text("Could not open map."),
+         ));
+       }
+     }
+   }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +88,7 @@ class _LocationScreenState extends State<LocationScreen> {
                   MarkerLayer(
                     markers: [
                       Marker(
-                        
+
                         width: 80.0,
                         height: 80.0,
                         point: _currentLatLng,
@@ -86,22 +105,14 @@ class _LocationScreenState extends State<LocationScreen> {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                mainAxisSpacing: 4.0,
-                crossAxisSpacing: 4.0,
-                children: [
-                  _buildLocationTile('Hyderabad'),
-                  _buildLocationTile('Bangalore'),
-                  _buildLocationTile('Mumbai'),
-                  _buildLocationTile('Pune'),
-                  _buildLocationTile('Delhi'),
-                  _buildLocationTile('Rajasthan'),
-                ],
-              ),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              mainAxisSpacing: 4.0,
+              crossAxisSpacing: 4.0,
+              children: [
+
+              ],
             ),
             ElevatedButton(
               onPressed: _searchLocation,

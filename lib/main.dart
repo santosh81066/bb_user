@@ -1,7 +1,7 @@
-// import 'package:firebase_core/firebase_core.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:firebase_core/firebase_core.dart';
 import 'Colors/coustcolors.dart';
 import 'Providers/auth.dart';
 import 'Screens/hallscalendar.dart';
@@ -19,10 +19,14 @@ import 'Screens/settings.dart';
 import 'Screens/upcoming.dart';
 import 'Screens/walletscreen.dart';
 import 'Widgets/bottomnavigation.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // await Firebase.initializeApp();
+   await Firebase.initializeApp(
+     options: DefaultFirebaseOptions.currentPlatform,
+   );
+
 
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -34,7 +38,7 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'BANQUETBOOKZ!',
       theme: ThemeData(
           //colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
@@ -65,7 +69,7 @@ class MyApp extends ConsumerWidget {
 
               // If already authenticated, go directly to navigation
               if (authState.token != null) {
-                return CoustNavigation();
+                return ResponsiveNavigation();
               }
 
               // Use a StatefulBuilder to prevent rebuilds from triggering re-login attempts
@@ -79,7 +83,7 @@ class MyApp extends ConsumerWidget {
         },
         '/welcome': (BuildContext context) {
           //welcome page
-          return CoustNavigation();
+          return ResponsiveNavigation();
         },
         '/profile_settings': (BuildContext context) {
           return const ProfileSetingsScreen();
@@ -148,7 +152,7 @@ class _AuthCheckScreenState extends ConsumerState<_AuthCheckScreen> {
           return const Center(child: CircularProgressIndicator());
         } else {
           // Based on auto-login result, navigate to appropriate screen
-          return snapshot.data == true ? CoustNavigation() : const LoginScreen();
+          return snapshot.data == true ? ResponsiveNavigation() : const LoginScreen();
         }
       },
     );

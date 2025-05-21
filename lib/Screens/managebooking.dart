@@ -255,7 +255,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
             width: double.infinity,
             height: 130,
             decoration: const BoxDecoration(
-              color: Color(0xFF6418C3),
+              color: CoustColors.colrStrock1,
               shape: BoxShape.rectangle,
               borderRadius: BorderRadiusDirectional.only(
                 bottomEnd: Radius.circular(25),
@@ -263,13 +263,15 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
               ),
             ),
             child: const Padding(
-              padding: EdgeInsets.only(top: 50.0, left: 15),
-              child: Text(
-                "Manage Booking",
-                style: TextStyle(
-                  color: CoustColors.colrEdtxt4,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              padding: EdgeInsets.only(top: 20.0, left: 15),
+              child: Center(
+                child: Text(
+                  "Manage Booking",
+                  style: TextStyle(
+                    color: CoustColors.colrEdtxt4,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -711,6 +713,20 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
   // Method to show booking details in a bottom sheet
   void _showBookingDetails(BuildContext context, GetHallBooking booking) {
+    String _getBookingStatusFromIsPaid(String isPaid) {
+      switch (isPaid) {
+        case 'b':
+          return 'Blocked';
+        case 'c':
+          return 'Confirmed';
+        case '0':
+          return 'Available';
+        case '1':
+          return 'Confirmed & Paid';
+        default:
+          return 'Unknown';
+      }
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -832,8 +848,8 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                 _detailRow('Date', formatDate(booking.date)),
                 _detailRow('Time',
                     '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}'),
-                _detailRow('Status', booking.isPaid == 1 ? 'Paid' : 'Unpaid'),
-                _detailRow('Booking ID', '#${booking.id}'),
+                _detailRow('Booking Status', _getBookingStatusFromIsPaid(booking.isPaid)),
+                _detailRow('Booking ID', '${booking.id}'),
               ],
             ),
           ),

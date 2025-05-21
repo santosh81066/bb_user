@@ -26,8 +26,7 @@ String bookingStatusToString(BookingStatus status) {
     case BookingStatus.blocked:
       return 'b';
     case BookingStatus.available:
-    default:
-      return '0';
+    return '0';
   }
 }
 

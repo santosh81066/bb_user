@@ -21,7 +21,6 @@ class bookingNotifier extends StateNotifier<AsyncValue<List<BookingState>>> {
         json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
     String token = extractData['token'];
     var url = '${Bbapi.booked_dates}' + '${property.id!}/';
-    print("getProperties: ${url}");
     try {
       var response = await http.get(
         Uri.parse(url),
@@ -30,11 +29,8 @@ class bookingNotifier extends StateNotifier<AsyncValue<List<BookingState>>> {
           'Authorization': 'Token $token',
         },
       );
-      print("HTTP Response: ${response.statusCode} - ${response.body}");
       var booked_dates = json.decode(response.body);
-      print("Response: ${booked_dates}");
       if (response.statusCode == 200) {
-        print("Response 200");
         List<dynamic> booked_dates = json.decode(response.body);
         if (booked_dates.isNotEmpty) {
           //final property = userDetails.first;
@@ -46,15 +42,12 @@ class bookingNotifier extends StateNotifier<AsyncValue<List<BookingState>>> {
               .map((json) => BookingState.fromJson(json))
               .toList();
         } else {
-          print("Response 200 but empty body");
           throw Exception('No properties found');
         }
       } else {
-        print("Failed response: ${response.statusCode} - ${response.body}");
         throw Exception('Failed to load properties');
       }
     } catch (e) {
-      print("Exception caught: $e");
       throw Exception('Failed to load properties');
     }
   }
@@ -66,7 +59,6 @@ class bookingNotifier extends StateNotifier<AsyncValue<List<BookingState>>> {
         json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
     String token = extractData['token'];
     var url = Bbapi.book_property;
-    print("Bookproperties: ${url}");
     try {
       var response = await http.post(Uri.parse(url),
           headers: {
@@ -77,12 +69,8 @@ class bookingNotifier extends StateNotifier<AsyncValue<List<BookingState>>> {
             "property": property.id!,
             "date": date!,
           }));
-      print(
-          "Bookproperties HTTP Response: ${response.statusCode} - ${response.body}");
       var booked_dates = json.decode(response.body);
-      print("Bookproperties Response: ${booked_dates}");
       if (response.statusCode == 201) {
-        print("Response 200");
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -101,12 +89,9 @@ class bookingNotifier extends StateNotifier<AsyncValue<List<BookingState>>> {
           },
         );
       } else {
-        print(
-            "Bookproperties Failed response: ${response.statusCode} - ${response.body}");
         throw Exception('Failed to load properties');
       }
     } catch (e) {
-      print("Bookproperties Exception caught: $e");
       throw Exception('Failed to load properties');
     }
   }

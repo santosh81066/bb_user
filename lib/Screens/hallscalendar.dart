@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 
 import '../models/hall_booking.dart';
 import '../utils/bbapi.dart';
+import 'halllocation.dart';
 
 class HallsCalendarScreen extends ConsumerStatefulWidget {
   const HallsCalendarScreen({super.key});
@@ -304,7 +305,7 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
 
       // Update local state
       setState(() {
-        bookingStatuses[bookingKey] = BookingStatus.confirmed as BookingStatus;
+        bookingStatuses[bookingKey] = BookingStatus.confirmed;
       });
 
       if (context.mounted) {
@@ -402,6 +403,13 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
         ),
         const SizedBox(height: 16),
 
+        HallLocationWidget(
+          propertyName: hall.name ?? 'Hall',
+          address: (ModalRoute.of(context)?.settings.arguments as Map)['property'].address,
+        ),
+
+        const SizedBox(height: 16),
+
         // Scrollable container for features
         Container(
           height: 350, // Set a fixed height to make it scrollable
@@ -415,38 +423,6 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  FutureBuilder<int>(
-                    future: ref
-                        .read(hallBookingProvider.notifier)
-                        .countUniqueBlockedUsersPerDay(hall.hallId ?? 0),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: Text("Loading user block info...", style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                        ),));
-                      } else if (snapshot.hasError) {
-                        return Text("Error: ${snapshot.error}");
-                      } else if (snapshot.hasData) {
-                        final uniqueUserCount = snapshot.data!;
-                        return Center(
-                          child: Text(
-                            "No.oF Users Blocked : $uniqueUserCount",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple,
-                            ),
-                          ),
-                        );
-                      } else {
-                        return const Text("No data available");
-                      }
-                    },
-                  ),
-
-                  const SizedBox(height: 8),
                   _buildSectionTitle('Basic Information'),
 
                   GridView.count(
@@ -1092,30 +1068,56 @@ class _HallsCalendarScreenState extends ConsumerState<HallsCalendarScreen> {
   }
 
   Widget? _getSlotStatusText(BookingStatus? status, int hallId, String date, String fromTime, String toTime) {
-    if (status == BookingStatus.confirmed) {
-      return const Text('Already Booked', style: TextStyle(color: Colors.red));
-    } else if (status == BookingStatus.blocked) {
-      return FutureBuilder<int>(
-        future: ref.read(hallBookingProvider.notifier).countUsersBlockedSameSlot(
-          hallId: hallId,
-          date: date,
-          fromTime: fromTime,
-          toTime: toTime,
-        ),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Text('Loading...', style: TextStyle(color: Colors.amber));
-          } else if (snapshot.hasError) {
-            return Text('Error', style: TextStyle(color: Colors.red));
-          } else {
-            return Text('${snapshot.data} users blocked this slot', style: TextStyle(color: Colors.amber));
-          }
-        },
-      );
-    }
-    return const Text('Available', style: TextStyle(color: Colors.green));
-  }
+    // Define text styles as constants
+     const errorStyle = TextStyle(color: Colors.red);
+    const warningStyle = TextStyle(color: Colors.amber);
 
+    switch (status) {
+      case BookingStatus.confirmed:
+        return const Text('Already Booked', style: errorStyle);
+
+      case BookingStatus.blocked:
+        return FutureBuilder<int>(
+          future: ref.read(hallBookingProvider.notifier).countUsersBlockedSameSlot(
+            hallId: hallId,
+            date: date,
+            fromTime: fromTime,
+            toTime: toTime,
+          ),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.amber),
+                ),
+              );
+            } else if (snapshot.hasError) {
+              return Text(
+                  'Error loading blocked count',
+                  style: errorStyle
+              );
+            } else {
+              final count = snapshot.data ?? 0;
+              return Text(
+                  count == 1
+                      ? '1 user blocked this slot'
+                      : '$count users blocked this slot',
+                  style: warningStyle
+              );
+            }
+          },
+        );
+
+      case BookingStatus.available:
+        return const Text('Available', style: TextStyle(color: Colors.green));
+
+      default:
+        return null; // or return const SizedBox.shrink() for no widget
+    }
+  }
 
 
   Widget _getBookingButtonText(Hall hall) {
