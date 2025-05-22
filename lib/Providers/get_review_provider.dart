@@ -9,7 +9,16 @@ import '../Providers/venues_provider.dart';
 class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
   final Ref ref;
 
-  ReviewsNotifier(this.ref) : super(const AsyncValue.loading());
+  ReviewsNotifier(this.ref) : super(const AsyncValue.loading()) {
+    print("ReviewsNotifier created");
+    fetchReviews(null);
+  }
+
+  @override
+  void dispose() {
+    print("ReviewsNotifier disposed");
+    super.dispose();
+  }
 
   Future<void> fetchReviews(dynamic venueType) async {
     state = const AsyncValue.loading();
@@ -21,7 +30,7 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
       // Debug info
       print("Fetching reviews with token: ${authState.token}");
 
-      // Make API request - fixing the endpoint URL
+      // Make API request
       final response = await http.get(
         Uri.parse('http://www.gocodedesigners.com/bbaddreview'),
         headers: {
@@ -70,7 +79,7 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
                       }
                     }
                   }
-                  if (review.hallName != null) break; // Stop if found
+                  if (review.hallName != null) break;
                 }
               }
             }
@@ -78,8 +87,7 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
 
           state = AsyncValue.data(reviews);
         } else {
-          state =
-              AsyncValue.error('Invalid response format', StackTrace.current);
+          state = AsyncValue.error('Invalid response format', StackTrace.current);
         }
       } else {
         state = AsyncValue.error(
@@ -90,9 +98,19 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<List<Review>>> {
       state = AsyncValue.error('Error: $error', stackTrace);
     }
   }
+
+  // Method to refresh reviews
+  Future<void> refreshReviews() async {
+    await fetchReviews(null);
+  }
 }
 
-// Fix: Adding ref to the provider
-final reviewsProvider = StateNotifierProvider<ReviewsNotifier, AsyncValue<List<Review>>>((ref) {
-  return ReviewsNotifier(ref); // Pass ref to the notifier
+// Updated provider with autoDispose and keepAlive
+final reviewsProvider = StateNotifierProvider.autoDispose<ReviewsNotifier, AsyncValue<List<Review>>>((ref) {
+  final notifier = ReviewsNotifier(ref);
+
+  // Keep the provider alive to prevent recreation
+  ref.keepAlive();
+
+  return notifier;
 });

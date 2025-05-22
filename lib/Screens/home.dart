@@ -109,7 +109,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // Recent Reviews
               SliverToBoxAdapter(
-                child: buildRecentReviews(reviewsState),
+                child:buildRecentReviews(ref),
               ),
             ],
           ),
@@ -438,7 +438,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget buildRecentReviews(AsyncValue<List<Review>> reviewsState) {
+  Widget buildRecentReviews(WidgetRef ref) {
+    // Use ref.watch to watch the provider
+    final reviewsState = ref.watch(reviewsProvider);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
       child: Column(
@@ -457,7 +460,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  // Navigate to all reviews
+                  // Navigate to all reviews or refresh
+                  // Option 1: Refresh reviews
+                  ref.refresh(reviewsProvider);
+
+                  // Option 2: If using the refresh provider
+                  // ref.read(reviewsRefreshProvider.notifier).state++;
                 },
                 child: Text(
                   "View All",
@@ -471,26 +479,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(height: 15),
 
-          // This is the correct way to use AsyncValue with pattern matching
+          // Handle different provider types
           reviewsState.when(
             loading: () => const ReviewLoadingSkeleton(),
             error: (error, stackTrace) {
               print("MANJUNADH$error");
-              return ReviewErrorWidget(error: error.toString());},
+              return Column(
+                children: [
+                  ReviewErrorWidget(error: error.toString()),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () => ref.refresh(reviewsProvider),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              );
+            },
             data: (reviews) {
               print("SANTOSH$reviews");
               if (reviews.isEmpty) {
                 return const EmptyReviewsWidget();
               }
 
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: reviews.length > 3 ? 3 : reviews.length, // Show at most 3 reviews
-                itemBuilder: (context, index) {
-                  final review = reviews[index];
-                  return EnhancedReviewCard(review: review);
-                },
+              return Column(
+                children: [
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: reviews.length > 3 ? 3 : reviews.length,
+                    itemBuilder: (context, index) {
+                      final review = reviews[index];
+                      return EnhancedReviewCard(review: review);
+                    },
+                  ),
+                  // Add refresh button if needed
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () => ref.refresh(reviewsProvider),
+                    child: const Text('Refresh Reviews'),
+                  ),
+                ],
               );
             },
           ),

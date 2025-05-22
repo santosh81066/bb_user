@@ -30,6 +30,8 @@ class GetHallBookingNotifier
 
       // Try to auto-login if no userId is found
       int? userId = authState.userId;
+      String? token = authState.token;
+
       if (userId == null) {
         // Attempt to refresh auth state with auto-login
         print("User ID is null, attempting to auto-login");
@@ -37,15 +39,16 @@ class GetHallBookingNotifier
         final autoLoginSuccess = await authNotifier.tryAutoLogin();
         print("Auto-login success: $autoLoginSuccess");
 
-        // Get the updated auth state
+        // Get the updated auth state after auto-login
         final updatedAuthState = ref.read(authprovider);
         userId = updatedAuthState.userId;
+        token = updatedAuthState.token;
         print("Updated auth state userId: $userId");
       }
 
-      // Check if userId exists after auto-login attempt
-      if (userId == null) {
-        throw Exception('User ID not found. Please log in again.');
+      // Check if userId and token exist after auto-login attempt
+      if (userId == null || token == null) {
+        throw Exception('User authentication failed. Please log in again.');
       }
 
       // Get booking data
@@ -53,7 +56,7 @@ class GetHallBookingNotifier
         Uri.parse(Bbapi.hallbooking),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${authState.token}',
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -64,16 +67,13 @@ class GetHallBookingNotifier
           final bookingsData = responseData['data'] as List<dynamic>;
           print('Decoded hall booking response: $responseData');
 
+          // Always filter bookings for the current user (no fallback to show all)
+          final userBookings = bookingsData
+              .map((booking) => GetHallBooking.fromJson(booking))
+              .where((booking) => booking.userId == userId)
+              .toList();
 
-          // Filter bookings for the current user if userId is available
-          final userBookings = authState.userId != null
-              ? bookingsData
-                  .map((booking) => GetHallBooking.fromJson(booking))
-                  .where((booking) => booking.userId == authState.userId)
-                  .toList()
-              : bookingsData
-                  .map((booking) => GetHallBooking.fromJson(booking))
-                  .toList();
+          print('Filtered bookings count: ${userBookings.length}');
 
           // Get properties data
           final propertyState = ref.read(propertyNotifierProvider);
@@ -97,20 +97,31 @@ class GetHallBookingNotifier
             }
           }
 
-          // Update state with data
+          // Update state with filtered data
           state = AsyncValue.data(userBookings);
         } else {
           state =
               AsyncValue.error('Invalid response format', StackTrace.current);
         }
+      } else if (response.statusCode == 401) {
+        // Handle unauthorized access
+        state = AsyncValue.error(
+            'Authentication failed. Please log in again.',
+            StackTrace.current);
       } else {
         state = AsyncValue.error(
             'Failed to load bookings: ${response.statusCode}',
             StackTrace.current);
       }
     } catch (error, stackTrace) {
+      print('Error loading bookings: $error');
       state = AsyncValue.error('Error: $error', stackTrace);
     }
+  }
+
+  // Method to refresh bookings
+  Future<void> refresh() async {
+    await loadBookings();
   }
 }
 

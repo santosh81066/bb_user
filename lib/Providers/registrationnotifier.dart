@@ -7,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bb_user/models/registrationstatemodel.dart';
 import 'package:bb_user/utils/bbapi.dart';
 
+import '../Screens/login.dart';
+
 class RegistrationNotifier extends StateNotifier<RegistrationState> {
   RegistrationNotifier() : super(RegistrationState.initial());
 
@@ -477,7 +479,7 @@ class RegistrationNotifier extends StateNotifier<RegistrationState> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              Navigator.of(context).pushReplacementNamed('/login');
+              Navigator.push(context,MaterialPageRoute(builder:(context)=>const ResponsiveLoginScreen()));
             },
             child: const Text('OK'),
           ),
