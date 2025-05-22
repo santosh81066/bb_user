@@ -1,16 +1,40 @@
 import 'dart:convert';
 import 'package:bb_user/Providers/auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
-final supportStateProvider = StateNotifierProvider<SupportStateNotifier, AsyncValue<void>>(
-      (ref) => SupportStateNotifier(ref),
+final supportStateProvider =
+    StateNotifierProvider<SupportStateNotifier, AsyncValue<void>>(
+  (ref) => SupportStateNotifier(ref),
 );
 
 class SupportStateNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref ref;
+  late Dio dio = Dio();
 
-  SupportStateNotifier(this.ref) : super(const AsyncValue.data(null));
+  SupportStateNotifier(this.ref) : super(const AsyncValue.data(null)) {
+    // Initialize Dio with similar settings to Postman
+    dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'User-Agent': 'PostmanRuntime/7.43.4',
+        'Cache-Control': 'no-cache',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+      },
+    ));
+
+    // Add logging interceptor
+    dio.interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      requestHeader: true,
+      responseHeader: true,
+    ));
+  }
 
   Future<void> submitSupportRequest({
     required String fullname,
@@ -53,142 +77,87 @@ class SupportStateNotifier extends StateNotifier<AsyncValue<void>> {
       "email": email.trim(),
       "subject": subject.trim(),
       "message": message.trim(),
-      "user_id": userId.toString(), // Ensure it's a string
+      "user_id": userId.toString(),
     };
 
     try {
       state = const AsyncValue.loading();
 
-      // Updated headers with proper formatting
-      final headers = {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Accept': 'application/json',
-      };
-
-      // Debug: Print the request details
-      print("=== SUPPORT REQUEST DEBUG ===");
+      print("=== DIO REQUEST ATTEMPT ===");
       print("URL: $url");
-      print("Headers: $headers");
-      print("Body: ${jsonEncode(body)}");
-      print("User ID: $userId (Type: ${userId.runtimeType})");
-      print("============================");
+      print("Body: $body");
 
-      final response = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: jsonEncode(body),
+      // Try with Dio
+      final response = await dio.post(
+        url,
+        data: body, // Dio automatically converts to JSON
       );
 
-      print("=== RESPONSE DEBUG ===");
+      print("=== DIO RESPONSE ===");
       print("Status Code: ${response.statusCode}");
+      print("Response Data: ${response.data}");
       print("Response Headers: ${response.headers}");
-      print("Response Body: ${response.body}");
-      print("====================");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("Support request submitted successfully.");
+        print("Support request submitted successfully with Dio!");
         state = const AsyncValue.data(null);
       } else {
-        // Try to parse error response
         String errorMessage = "Failed with status: ${response.statusCode}";
 
-        try {
-          final responseData = jsonDecode(response.body);
-          if (responseData is Map<String, dynamic>) {
-            // Check for common error message fields
-            if (responseData.containsKey('messages') && responseData['messages'] is List) {
-              errorMessage = (responseData['messages'] as List).join(', ');
-            } else if (responseData.containsKey('error')) {
-              errorMessage = responseData['error'].toString();
-            } else if (responseData.containsKey('message')) {
-              errorMessage = responseData['message'].toString();
+        if (response.data != null) {
+          try {
+            final responseData = response.data;
+            if (responseData is Map<String, dynamic>) {
+              if (responseData.containsKey('messages') &&
+                  responseData['messages'] is List) {
+                errorMessage = (responseData['messages'] as List).join(', ');
+              } else if (responseData.containsKey('error')) {
+                errorMessage = responseData['error'].toString();
+              } else if (responseData.containsKey('message')) {
+                errorMessage = responseData['message'].toString();
+              }
             }
-          }
-        } catch (e) {
-          // If JSON parsing fails, use the raw response body
-          if (response.body.isNotEmpty) {
-            errorMessage = response.body;
+          } catch (e) {
+            errorMessage = response.data.toString();
           }
         }
 
-        print("Failed to submit support request. Status: ${response.statusCode}");
+        print(
+            "Failed to submit support request. Status: ${response.statusCode}");
         print("Error message: $errorMessage");
         state = AsyncValue.error(errorMessage, StackTrace.current);
       }
-    } catch (e, st) {
-      print("Exception occurred: $e");
-      print("Stack trace: $st");
-      state = AsyncValue.error("Network error: ${e.toString()}", st);
-    }
-  }
+    } on DioException catch (e) {
+      print("=== DIO EXCEPTION ===");
+      print("Error Type: ${e.type}");
+      print("Error Message: ${e.message}");
+      print("Response: ${e.response?.data}");
+      print("Status Code: ${e.response?.statusCode}");
 
-  // Alternative method using form data if JSON continues to fail
-  Future<void> submitSupportRequestFormData({
-    required String fullname,
-    required String email,
-    required String subject,
-    required String message,
-  }) async {
-    const url = "http://www.gocodedesigners.com/bbusersupport";
+      String errorMessage = "Network error";
 
-    // Get the user ID from the auth provider
-    final authState = ref.read(authprovider);
-    final userId = authState.userId;
-
-    if (userId == null) {
-      state = AsyncValue.error("User not authenticated", StackTrace.current);
-      return;
-    }
-
-    try {
-      state = const AsyncValue.loading();
-
-      // Using MultipartRequest for form-data
-      var request = http.MultipartRequest('POST', Uri.parse(url));
-
-      // Add form fields
-      request.fields.addAll({
-        'fullname': fullname.trim(),
-        'email': email.trim(),
-        'subject': subject.trim(),
-        'message': message.trim(),
-        'user_id': userId.toString(),
-      });
-
-      print("=== FORM DATA REQUEST DEBUG ===");
-      print("URL: $url");
-      print("Fields: ${request.fields}");
-      print("================================");
-
-      // Send request
-      http.StreamedResponse streamedResponse = await request.send();
-      http.Response response = await http.Response.fromStream(streamedResponse);
-
-      print("=== FORM DATA RESPONSE DEBUG ===");
-      print("Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
-      print("===============================");
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        print("Support request submitted successfully via form data.");
-        state = const AsyncValue.data(null);
-      } else {
-        String errorMessage = "Failed with status: ${response.statusCode}";
+      if (e.response != null) {
         try {
-          final responseData = jsonDecode(response.body);
-          if (responseData is Map<String, dynamic> && responseData.containsKey('messages')) {
+          final responseData = e.response!.data;
+          if (responseData is Map<String, dynamic> &&
+              responseData.containsKey('messages')) {
             errorMessage = (responseData['messages'] as List).join(', ');
+          } else {
+            errorMessage = "Server error: ${e.response!.statusCode}";
           }
-        } catch (e) {
-          if (response.body.isNotEmpty) {
-            errorMessage = response.body;
-          }
+        } catch (parseError) {
+          errorMessage = "Server error: ${e.response!.statusCode}";
         }
-        state = AsyncValue.error(errorMessage, StackTrace.current);
+      } else {
+        errorMessage = e.message ?? "Network connection failed";
       }
+
+      state = AsyncValue.error(errorMessage, StackTrace.current);
     } catch (e, st) {
-      print("Exception occurred: $e");
-      state = AsyncValue.error("Network error: ${e.toString()}", st);
+      print("=== GENERAL EXCEPTION ===");
+      print("Exception: $e");
+      print("Stack trace: $st");
+      state = AsyncValue.error("Unexpected error: ${e.toString()}", st);
     }
   }
 }

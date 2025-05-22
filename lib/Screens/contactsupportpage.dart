@@ -10,12 +10,15 @@ class ContactSupportPage extends ConsumerStatefulWidget {
   ConsumerState<ContactSupportPage> createState() => _ContactSupportPageState();
 }
 
-class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with SingleTickerProviderStateMixin {
+class _ContactSupportPageState extends ConsumerState<ContactSupportPage>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _subjectController = TextEditingController();
-  final _messageController = TextEditingController();
+  final _controllers = {
+    'name': TextEditingController(),
+    'email': TextEditingController(),
+    'subject': TextEditingController(),
+    'message': TextEditingController(),
+  };
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -23,151 +26,95 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
+        vsync: this, duration: const Duration(milliseconds: 800));
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
-    );
+        CurvedAnimation(parent: _animationController, curve: Curves.easeIn));
     _animationController.forward();
-
-    // Pre-fill user data from auth state
     _prefillUserData();
   }
 
   void _prefillUserData() {
-    // Get user data from auth state and pre-fill the form
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authState = ref.read(authprovider);
-      if (authState.username != null && authState.username!.isNotEmpty) {
-        _nameController.text = authState.username!;
-      }
-      if (authState.email != null && authState.email!.isNotEmpty) {
-        _emailController.text = authState.email!;
-      }
+      if (authState.username?.isNotEmpty == true)
+        _controllers['name']!.text = authState.username!;
+      if (authState.email?.isNotEmpty == true)
+        _controllers['email']!.text = authState.email!;
     });
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _subjectController.dispose();
-    _messageController.dispose();
+    _controllers.values.forEach((c) => c.dispose());
     _animationController.dispose();
     super.dispose();
   }
 
   Future<void> _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      // Check if user is authenticated
-      final authState = ref.read(authprovider);
-      if (authState.userId == null) {
-        _showErrorMessage('Please log in to submit a support request');
-        return;
-      }
+    if (!_formKey.currentState!.validate()) return;
 
-      try {
-        // Submit the support request
-        await ref.read(supportStateProvider.notifier).submitSupportRequestFormData(
-          fullname: _nameController.text,
-          email: _emailController.text,
-          subject: _subjectController.text,
-          message: _messageController.text,
-        );
+    final authState = ref.read(authprovider);
+    if (authState.userId == null) {
+      _showSnackBar('Please log in to submit a support request', Colors.red,
+          Icons.error_outline);
+      return;
+    }
 
-        // If we reach here, the request was successful
-        _showSuccessMessage(_nameController.text);
+    try {
+      await ref.read(supportStateProvider.notifier).submitSupportRequest(
+            fullname: _controllers['name']!.text,
+            email: _controllers['email']!.text,
+            subject: _controllers['subject']!.text,
+            message: _controllers['message']!.text,
+          );
 
-        // Clear form fields
-        _nameController.clear();
-        _emailController.clear();
-        _subjectController.clear();
-        _messageController.clear();
+      _showSnackBar(
+          'Thank you ${_controllers['name']!.text}! Your support request has been submitted successfully.',
+          Colors.green,
+          Icons.check_circle);
 
-        // Reset form
-        _formKey.currentState!.reset();
-
-        // Re-prefill user data
-        _prefillUserData();
-
-      } catch (e) {
-        // Handle any errors that occurred during submission
-        _showErrorMessage(e.toString());
-      }
+      _controllers.values.forEach((c) => c.clear());
+      _formKey.currentState!.reset();
+      _prefillUserData();
+    } catch (e) {
+      _showSnackBar(
+          'Failed to submit request: $e', Colors.red, Icons.error_outline);
     }
   }
 
-  void _showSuccessMessage(String name) {
+  void _showSnackBar(String message, Color color, IconData icon) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.white),
+            Icon(icon, color: Colors.white),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(
-                'Thank you $name! Your support request has been submitted successfully.',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
+                child:
+                    Text(message, style: const TextStyle(color: Colors.white))),
           ],
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: color,
         duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
-  }
-
-  void _showErrorMessage(String errorMessage) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                'Failed to submit request: $errorMessage',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Listen to supportStateProvider state and auth state
     final supportState = ref.watch(supportStateProvider);
     final authState = ref.watch(authprovider);
-
-    // Check if currently submitting
     final isSubmitting = supportState.isLoading;
+    final isLoggedIn = authState.userId != null;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         elevation: 0,
-        title: const Text(
-          'Contact Support',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Contact Support',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF6418C3),
         centerTitle: true,
         leading: IconButton(
@@ -185,263 +132,14 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Show authentication warning if not logged in
-                  if (authState.userId == null)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 20),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.orange[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange[200]!),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.warning_amber, color: Colors.orange[700]),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Please log in to submit a support request',
-                              style: TextStyle(
-                                color: Colors.orange[700],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // Header card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.support_agent,
-                          size: 60,
-                          color: Color(0xFF6418C3),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'How can we help you?',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Fill out the form below and our support team will get back to you as soon as possible.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        // Show current user info if logged in
-                        if (authState.userId != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6418C3).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                'Logged in as: ${authState.username ?? authState.email ?? 'User'}',
-                                style: const TextStyle(
-                                  color: Color(0xFF6418C3),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
+                  if (!isLoggedIn) _buildWarningCard(),
+                  _buildHeaderCard(authState),
                   const SizedBox(height: 30),
-
-                  // Form fields
-                  _buildInputLabel('Full Name'),
-                  _buildTextField(
-                    controller: _nameController,
-                    hintText: 'Enter your name',
-                    prefixIcon: Icons.person_outline,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your name';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  _buildInputLabel('Email Address'),
-                  _buildTextField(
-                    controller: _emailController,
-                    hintText: 'Enter your email',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                        return 'Please enter a valid email address';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  _buildInputLabel('Subject'),
-                  _buildTextField(
-                    controller: _subjectController,
-                    hintText: 'What is this regarding?',
-                    prefixIcon: Icons.subject,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a subject';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  _buildInputLabel('Message'),
-                  TextFormField(
-                    controller: _messageController,
-                    maxLines: 5,
-                    decoration: InputDecoration(
-                      hintText: 'Describe your issue or question in detail',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(bottom: 80),
-                        child: Icon(Icons.message_outlined, color: Colors.grey[600]),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFF6418C3), width: 1.5),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Colors.red, width: 1),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your message';
-                      }
-                      return null;
-                    },
-                  ),
-
+                  ..._buildFormFields(),
                   const SizedBox(height: 30),
-
-                  // Submit button
-                  Center(
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: (isSubmitting || authState.userId == null) ? null : _submitForm,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6418C3),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          elevation: 2,
-                        ),
-                        child: isSubmitting
-                            ? const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              'Submitting...',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        )
-                            : Text(
-                          authState.userId == null ? 'Please Log In' : 'Submit Request',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
+                  _buildSubmitButton(isSubmitting, isLoggedIn),
                   const SizedBox(height: 16),
-
-                  // Additional contact methods
-                  Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Or contact us directly:',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildContactMethod(Icons.phone, 'Call'),
-                            const SizedBox(width: 24),
-                            _buildContactMethod(Icons.chat_bubble_outline, 'Live Chat'),
-                            const SizedBox(width: 24),
-                            _buildContactMethod(Icons.help_outline, 'FAQs'),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildContactMethods(),
                 ],
               ),
             ),
@@ -451,18 +149,141 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
     );
   }
 
-  Widget _buildInputLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 8),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
+  Widget _buildWarningCard() => Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.orange[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.orange[200]!),
         ),
-      ),
-    );
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber, color: Colors.orange[700]),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Please log in to submit a support request',
+                style: TextStyle(
+                    color: Colors.orange[700], fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildHeaderCard(authState) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: const Offset(0, 3))
+          ],
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.support_agent, size: 60, color: Color(0xFF6418C3)),
+            const SizedBox(height: 16),
+            const Text('How can we help you?',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text(
+              'Fill out the form below and our support team will get back to you as soon as possible.',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            if (authState.userId != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6418C3).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Logged in as: ${authState.username ?? authState.email ?? 'User'}',
+                    style: const TextStyle(
+                        color: Color(0xFF6418C3),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+
+  List<Widget> _buildFormFields() {
+    final fields = [
+      {
+        'label': 'Full Name',
+        'controller': 'name',
+        'hint': 'Enter your name',
+        'icon': Icons.person_outline,
+        'validator': 'name'
+      },
+      {
+        'label': 'Email Address',
+        'controller': 'email',
+        'hint': 'Enter your email',
+        'icon': Icons.email_outlined,
+        'validator': 'email',
+        'type': TextInputType.emailAddress
+      },
+      {
+        'label': 'Subject',
+        'controller': 'subject',
+        'hint': 'What is this regarding?',
+        'icon': Icons.subject,
+        'validator': 'subject'
+      },
+    ];
+
+    return [
+      ...fields.expand((field) => [
+            _buildInputLabel(field['label'] as String),
+            _buildTextField(
+              controller: _controllers[field['controller']]!,
+              hintText: field['hint'] as String,
+              prefixIcon: field['icon'] as IconData,
+              keyboardType:
+                  field['type'] as TextInputType? ?? TextInputType.text,
+              validator: _getValidator(field['validator'] as String),
+            ),
+            const SizedBox(height: 20),
+          ]),
+      _buildInputLabel('Message'),
+      _buildMessageField(),
+    ];
   }
+
+  String? Function(String?) _getValidator(String type) {
+    switch (type) {
+      case 'email':
+        return (value) {
+          if (value == null || value.isEmpty) return 'Please enter your email';
+          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value))
+            return 'Please enter a valid email address';
+          return null;
+        };
+      default:
+        return (value) =>
+            value == null || value.isEmpty ? 'Please enter your ${type}' : null;
+    }
+  }
+
+  Widget _buildInputLabel(String label) => Padding(
+        padding: const EdgeInsets.only(left: 8, bottom: 8),
+        child: Text(label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      );
 
   Widget _buildTextField({
     required TextEditingController controller,
@@ -470,65 +291,125 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
     required IconData prefixIcon,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
+  }) =>
+      TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: _inputDecoration(hintText, prefixIcon),
+        validator: validator,
+      );
+
+  Widget _buildMessageField() => TextFormField(
+        controller: _controllers['message']!,
+        maxLines: 5,
+        decoration: _inputDecoration(
+            'Describe your issue or question in detail', Icons.message_outlined,
+            isPadded: true),
+        validator: (value) =>
+            value == null || value.isEmpty ? 'Please enter your message' : null,
+      );
+
+  InputDecoration _inputDecoration(String hintText, IconData icon,
+          {bool isPadded = false}) =>
+      InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(color: Colors.grey[400]),
-        prefixIcon: Icon(prefixIcon, color: Colors.grey[600]),
+        prefixIcon: isPadded
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 80),
+                child: Icon(icon, color: Colors.grey[600]))
+            : Icon(icon, color: Colors.grey[600]),
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-        ),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey[300]!, width: 1)),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF6418C3), width: 1.5),
-        ),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF6418C3), width: 1.5)),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.red, width: 1),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      ),
-      validator: validator,
-    );
-  }
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.red, width: 1)),
+        contentPadding:
+            EdgeInsets.symmetric(horizontal: 16, vertical: isPadded ? 16 : 0),
+      );
 
-  Widget _buildContactMethod(IconData icon, String label) {
-    return InkWell(
-      onTap: () {
-        // Handle contact method tap
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  Widget _buildSubmitButton(bool isSubmitting, bool isLoggedIn) => Center(
+        child: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: (isSubmitting || !isLoggedIn) ? null : _submitForm,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6418C3),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              elevation: 2,
+            ),
+            child: isSubmitting
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2)),
+                      SizedBox(width: 12),
+                      Text('Submitting...',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                    ],
+                  )
+                : Text(
+                    isLoggedIn ? 'Submit Request' : 'Please Log In',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+          ),
+        ),
+      );
+
+  Widget _buildContactMethods() => Center(
         child: Column(
           children: [
-            Icon(
-              icon,
-              color: const Color(0xFF6418C3),
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF6418C3),
-                fontWeight: FontWeight.w500,
-              ),
+            Text('Or contact us directly:',
+                style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildContactMethod(Icons.phone, 'Call'),
+                const SizedBox(width: 24),
+                _buildContactMethod(Icons.chat_bubble_outline, 'Live Chat'),
+                const SizedBox(width: 24),
+                _buildContactMethod(Icons.help_outline, 'FAQs'),
+              ],
             ),
           ],
         ),
-      ),
-    );
-  }
+      );
+
+  Widget _buildContactMethod(IconData icon, String label) => InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Column(
+            children: [
+              Icon(icon, color: const Color(0xFF6418C3), size: 24),
+              const SizedBox(height: 4),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF6418C3),
+                      fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      );
 }
