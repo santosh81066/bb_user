@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../Colors/coustcolors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../Providers/firebase_notification_service.dart';
+import 'fcm.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   @override
@@ -20,20 +24,119 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   };
 
   // Category data for better organization
+  final Map<String, String> labelToTopicMap = {
+    'Promotions': 'promotions',
+    'Reviews': 'reviews',
+    'System Updates': 'system_updates',
+    'Booking': 'booking',
+    'Cancellations': 'cancellations',
+    'Upcoming': 'upcoming',
+    'Payment Confirmations': 'payment_confirmations',
+    'New Features': 'new_features',
+  };
+
+  // Categories definition
   final List<Map<String, dynamic>> categories = [
     {
-      'title': 'Mobile Notifications',
-      'icon': Icons.notifications_active,
-      'items': ['Promotions', 'Reviews', 'System Updates', 'New Features'],
-      'description': 'Manage notifications sent directly to your device'
+      'title': 'Marketing & Promotions',
+      'description': 'Special offers, discounts, and promotional content',
+      'icon': Icons.local_offer,
+      'items': ['Promotions', 'New Features'],
     },
     {
-      'title': 'Event Notifications',
-      'icon': Icons.event_available,
-      'items': ['Booking', 'Cancellations', 'Upcoming', 'Payment Confirmations'],
-      'description': 'Control notifications related to your scheduled events'
+      'title': 'Booking & Events',
+      'description': 'Updates about your bookings and upcoming events',
+      'icon': Icons.event,
+      'items': ['Booking', 'Cancellations', 'Upcoming'],
+    },
+    {
+      'title': 'Payments & Reviews',
+      'description': 'Payment confirmations and review notifications',
+      'icon': Icons.payment,
+      'items': ['Payment Confirmations', 'Reviews'],
+    },
+    {
+      'title': 'System & Updates',
+      'description': 'Important system updates and maintenance notices',
+      'icon': Icons.system_update,
+      'items': ['System Updates'],
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationPreferences();
+  }
+
+  Future<void> _loadNotificationPreferences() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      notificationStates.forEach((key, value) {
+        String topicKey = labelToTopicMap[key]!;
+        notificationStates[key] = prefs.getBool('notification_$topicKey') ?? value;
+      });
+    });
+  }
+
+  Future<void> _updateNotificationPreference(String label, bool enabled) async {
+    String topicKey = labelToTopicMap[label]!;
+    await FirebaseNotificationService.updateNotificationPreference(topicKey, enabled);
+
+    setState(() {
+      notificationStates[label] = enabled;
+    });
+  }
+
+  Future<void> _updateAllNotifications(bool enabled) async {
+    // Update all notifications in Firebase
+    List<Future> futures = [];
+    notificationStates.forEach((label, _) {
+      String topicKey = labelToTopicMap[label]!;
+      futures.add(FirebaseNotificationService.updateNotificationPreference(topicKey, enabled));
+    });
+
+    await Future.wait(futures);
+
+    setState(() {
+      notificationStates.forEach((key, _) {
+        notificationStates[key] = enabled;
+      });
+    });
+  }
+
+  Future<void> _resetToDefaultSettings() async {
+    Map<String, bool> defaultSettings = {
+      'Promotions': false,
+      'Reviews': true,
+      'System Updates': true,
+      'Booking': true,
+      'Cancellations': true,
+      'Upcoming': true,
+      'Payment Confirmations': true,
+      'New Features': false,
+    };
+
+    // Update all settings in Firebase
+    List<Future> futures = [];
+    defaultSettings.forEach((label, enabled) {
+      String topicKey = labelToTopicMap[label]!;
+      futures.add(FirebaseNotificationService.updateNotificationPreference(topicKey, enabled));
+    });
+
+    await Future.wait(futures);
+
+    setState(() {
+      notificationStates = Map.from(defaultSettings);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Reset to default settings'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,12 +201,8 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                         Spacer(),
                         Switch(
                           value: !notificationStates.values.contains(false),
-                          onChanged: (value) {
-                            setState(() {
-                              notificationStates.forEach((key, _) {
-                                notificationStates[key] = value;
-                              });
-                            });
+                          onChanged: (value) async {
+                            await _updateAllNotifications(value);
                           },
                           activeColor: Color(0xFF6418C3),
                         ),
@@ -149,28 +248,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   ),
                   SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () {
-                      // Reset to default settings
-                      setState(() {
-                        notificationStates = {
-                          'Promotions': false,
-                          'Reviews': true,
-                          'System Updates': true,
-                          'Booking': true,
-                          'Cancellations': true,
-                          'Upcoming': true,
-                          'Payment Confirmations': true,
-                          'New Features': false,
-                        };
-                      });
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Reset to default settings'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
+                    onPressed: _resetToDefaultSettings,
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.black87,
                       backgroundColor: Colors.grey[200],
@@ -272,10 +350,8 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           ),
           Switch(
             value: notificationStates[label] ?? false,
-            onChanged: (value) {
-              setState(() {
-                notificationStates[label] = value;
-              });
+            onChanged: (value) async {
+              await _updateNotificationPreference(label, value);
             },
             activeColor: Color(0xFF6418C3),
           ),

@@ -46,6 +46,7 @@ class _BookVenueScreenState extends ConsumerState<BookVenueScreen> {
   @override
   Widget build(BuildContext context) {
     final calendarState = ref.watch(bookingProvider);
+
     final calendarNotifier = ref.read(bookingProvider.notifier);
     List<String> formattedBlockedDates = [];
     return Scaffold(

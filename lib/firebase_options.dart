@@ -63,6 +63,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1084778978204',
     projectId: 'banquetbookz-4a22d',
     storageBucket: 'banquetbookz-4a22d.firebasestorage.app',
-    iosBundleId: 'com.bbuser',
+    iosBundleId: 'com.bb_user',
   );
 }

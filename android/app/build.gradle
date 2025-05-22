@@ -24,14 +24,14 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.bbuser"
+    namespace = "com.bb_user"
     compileSdk = 35 // Specify the correct compileSdkVersion
 
     defaultConfig {
-        applicationId = "com.bbuser"
+        applicationId = "com.bb_user"
         minSdk = 23 // Update as per your project requirements
         targetSdk = 34
-        versionCode = 12
+        versionCode = 15
         versionName = flutterVersionName
     }
     signingConfigs {
@@ -57,6 +57,7 @@ android {
     }
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -67,7 +68,7 @@ flutter {
 }
 
 dependencies {
-    // Update Firebase dependencies to compatible versions
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation platform('com.google.firebase:firebase-bom:32.5.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-messaging:23.2.1'
