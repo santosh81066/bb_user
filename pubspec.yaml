@@ -69,7 +69,7 @@ dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/app_icon.jpg"
+  image_path: "assets/Banquetbookz.png"
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -100,7 +100,7 @@ flutter:
     - assets/hotel_image4.jpeg
     - assets/hotel_image5.jpeg
     - assets/hotel_image6.jpeg
-    - assets/app_icon.jpg
+    - assets/Banquetbookz.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

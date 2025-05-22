@@ -99,7 +99,7 @@ class _ResponsiveLoginScreenState extends ConsumerState<ResponsiveLoginScreen> {
                     // App logo or title
                     SizedBox(height: isSmallScreen ? 60 : 80),
                     Image.asset(
-                      "assets/app_icon.jpg",
+                      "assets/Banquetbookz.png",
                       width: isSmallScreen ? 80 : 120,
                       height: isSmallScreen ? 80 : 120,
 

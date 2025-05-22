@@ -5,11 +5,10 @@ class RegistrationState {
   final String? message;
   final bool isLoading;
   final File? profileImage;
-   final String? username;
+  final String? username;
   final String? email;
   final String? password;
   final String? contactNumber;
-  
 
   // Constructor for initial state
   RegistrationState({
@@ -31,6 +30,7 @@ class RegistrationState {
       isLoading: false,
     );
   }
+
   factory RegistrationState.fromJson(Map<String, dynamic> json) {
     return RegistrationState(
       message: json['message'] as String?,
@@ -47,14 +47,13 @@ class RegistrationState {
       isLoading: false,
     );
   }
-  
+
   // Failure state
   factory RegistrationState.failure({String? errorMessage}) {
     return RegistrationState(
       errorMessage: errorMessage,
       message: null,
       isLoading: false,
-      
     );
   }
 
@@ -67,37 +66,26 @@ class RegistrationState {
     );
   }
 
-
-
+  // Updated copyWith method to preserve all fields
   RegistrationState copyWith({
+    String? errorMessage,
+    String? message,
+    bool? isLoading,
     File? profileImage,
-    File? propertyImage,
     String? username,
     String? email,
     String? password,
     String? contactNumber,
-    String? address1,
-    String? address2,
-    String? state,
-    String? city,
-    String? pincode,
-    String? location,
   }) {
     return RegistrationState(
+      errorMessage: errorMessage ?? this.errorMessage,
+      message: message ?? this.message,
+      isLoading: isLoading ?? this.isLoading,
       profileImage: profileImage ?? this.profileImage,
-      // propertyImage: propertyImage ?? this.propertyImage,
-      
       username: username ?? this.username,
       email: email ?? this.email,
       password: password ?? this.password,
       contactNumber: contactNumber ?? this.contactNumber,
-      // address1: address1 ?? this.address1,
-      // address2: address2 ?? this.address2,
-      // state: state ?? this.state,
-      // city: city ?? this.city,
-      // pincode: pincode ?? this.pincode,
-      // location: location ?? this.location,
     );
   }
-
 }
