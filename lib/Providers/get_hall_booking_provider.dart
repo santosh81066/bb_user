@@ -62,8 +62,7 @@ class GetHallBookingNotifier
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        if (responseData['success'] == true &&
-            responseData['data'] != null) {
+        if (responseData['success'] == true && responseData['data'] != null) {
           final bookingsData = responseData['data'] as List<dynamic>;
           print('Decoded hall booking response: $responseData');
 
@@ -106,8 +105,7 @@ class GetHallBookingNotifier
       } else if (response.statusCode == 401) {
         // Handle unauthorized access
         state = AsyncValue.error(
-            'Authentication failed. Please log in again.',
-            StackTrace.current);
+            'Authentication failed. Please log in again.', StackTrace.current);
       } else {
         state = AsyncValue.error(
             'Failed to load bookings: ${response.statusCode}',
