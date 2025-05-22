@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../Providers/auth.dart';
 import '../Providers/contactsupport.dart';
-import '../Providers/review_provider.dart';
-import '../models/contactsupport.dart';
 
 class ContactSupportPage extends ConsumerStatefulWidget {
   const ContactSupportPage({super.key});
@@ -17,7 +16,6 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
   final _emailController = TextEditingController();
   final _subjectController = TextEditingController();
   final _messageController = TextEditingController();
-  bool _isSubmitting = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -35,6 +33,22 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
       ),
     );
     _animationController.forward();
+
+    // Pre-fill user data from auth state
+    _prefillUserData();
+  }
+
+  void _prefillUserData() {
+    // Get user data from auth state and pre-fill the form
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authState = ref.read(authprovider);
+      if (authState.username != null && authState.username!.isNotEmpty) {
+        _nameController.text = authState.username!;
+      }
+      if (authState.email != null && authState.email!.isNotEmpty) {
+        _emailController.text = authState.email!;
+      }
+    });
   }
 
   @override
@@ -49,52 +63,41 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
 
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isSubmitting = true;
-      });
+      // Check if user is authenticated
+      final authState = ref.read(authprovider);
+      if (authState.userId == null) {
+        _showErrorMessage('Please log in to submit a support request');
+        return;
+      }
 
-      // Create support request object
-      final supportRequest = SupportRequest(
-        fullname: _nameController.text,
-        email: _emailController.text,
-        subject: _subjectController.text,
-        message: _messageController.text,
-        userId: 1, // Replace with actual user ID from your auth system
-      );
+      try {
+        // Submit the support request
+        await ref.read(supportStateProvider.notifier).submitSupportRequestFormData(
+          fullname: _nameController.text,
+          email: _emailController.text,
+          subject: _subjectController.text,
+          message: _messageController.text,
+        );
 
-      // Submit request using Riverpod provider
-      await ref.read(supportStateProvider.notifier).submitSupportRequest(supportRequest);
+        // If we reach here, the request was successful
+        _showSuccessMessage(_nameController.text);
 
-      // Get the state to check for success or error
-      final state = ref.read(supportStateProvider);
+        // Clear form fields
+        _nameController.clear();
+        _emailController.clear();
+        _subjectController.clear();
+        _messageController.clear();
 
-      setState(() {
-        _isSubmitting = false;
-      });
+        // Reset form
+        _formKey.currentState!.reset();
 
-      // Show appropriate message based on state
-      state.when(
-        data: (response) {
-          if (response != null && response.success) {
-            _showSuccessMessage(_nameController.text);
-            // Clear form fields
-            _nameController.clear();
-            _emailController.clear();
-            _subjectController.clear();
-            _messageController.clear();
-            // Reset form
-            _formKey.currentState!.reset();
-          } else if (response != null && !response.success) {
-            _showErrorMessage(response.messages.isNotEmpty ? response.messages.first : 'Request failed');
-          }
-        },
-        error: (error, stackTrace) {
-          _showErrorMessage(error.toString());
-        },
-        loading: () {
-          // Already handled by setting _isSubmitting
-        },
-      );
+        // Re-prefill user data
+        _prefillUserData();
+
+      } catch (e) {
+        // Handle any errors that occurred during submission
+        _showErrorMessage(e.toString());
+      }
     }
   }
 
@@ -150,8 +153,12 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
 
   @override
   Widget build(BuildContext context) {
-    // Listen to supportStateProvider state
+    // Listen to supportStateProvider state and auth state
     final supportState = ref.watch(supportStateProvider);
+    final authState = ref.watch(authprovider);
+
+    // Check if currently submitting
+    final isSubmitting = supportState.isLoading;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -178,6 +185,33 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Show authentication warning if not logged in
+                  if (authState.userId == null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber, color: Colors.orange[700]),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Please log in to submit a support request',
+                              style: TextStyle(
+                                color: Colors.orange[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   // Header card
                   Container(
                     padding: const EdgeInsets.all(20),
@@ -217,6 +251,26 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
                           ),
                           textAlign: TextAlign.center,
                         ),
+                        // Show current user info if logged in
+                        if (authState.userId != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6418C3).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Logged in as: ${authState.username ?? authState.email ?? 'User'}',
+                                style: const TextStyle(
+                                  color: Color(0xFF6418C3),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -319,7 +373,7 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _isSubmitting ? null : _submitForm,
+                        onPressed: (isSubmitting || authState.userId == null) ? null : _submitForm,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6418C3),
                           foregroundColor: Colors.white,
@@ -328,34 +382,33 @@ class _ContactSupportPageState extends ConsumerState<ContactSupportPage> with Si
                           ),
                           elevation: 2,
                         ),
-                        child: supportState.maybeWhen(
-                          loading: () => const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
+                        child: isSubmitting
+                            ? const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
                               ),
-                              SizedBox(width: 12),
-                              Text(
-                                'Submitting...',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          orElse: () => const Text(
-                            'Submit Request',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
                             ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Submitting...',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        )
+                            : Text(
+                          authState.userId == null ? 'Please Log In' : 'Submit Request',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),

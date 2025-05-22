@@ -440,15 +440,15 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+     /* floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           // Navigate to create booking screen
-          Navigator.of(context).pushNamed('/create-booking');
+          Navigator.of(context).pushNamed('/venue_details');
         },
         backgroundColor: Color(0xFF6418C3),
         icon: Icon(Icons.add, color: Colors.white),
         label: Text('New Booking', style: TextStyle(color: Colors.white)),
-      ),
+      ),*/
     );
   }
 
@@ -1019,6 +1019,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
     );
   }
 // Method to show booking details in a bottom sheet
+  // Enhanced method to show booking details in a bottom sheet
   void _showBookingDetails(BuildContext context, GetHallBooking booking) {
     String _getBookingStatusFromIsPaid(String isPaid) {
       switch (isPaid) {
@@ -1037,172 +1038,580 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
       }
     }
 
+    Color _getStatusColor(String isPaid) {
+      switch (isPaid) {
+        case 'b':
+          return Colors.orange;
+        case 'c':
+          return Colors.blue;
+        case '0':
+          return Colors.grey;
+        case '1':
+          return Colors.green;
+        case 'cl':
+          return Colors.red;
+        default:
+          return Colors.grey;
+      }
+    }
+
+    IconData _getStatusIcon(String isPaid) {
+      switch (isPaid) {
+        case 'b':
+          return Icons.block;
+        case 'c':
+          return Icons.check_circle_outline;
+        case '0':
+          return Icons.radio_button_unchecked;
+        case '1':
+          return Icons.check_circle;
+        case 'cl':
+          return Icons.cancel;
+        default:
+          return Icons.help_outline;
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(25),
+            topRight: Radius.circular(25),
+          ),
         ),
-      ),
-      builder: (context) =>
-          DraggableScrollableSheet(
-            initialChildSize: 0.6,
-            maxChildSize: 0.9,
-            minChildSize: 0.5,
-            expand: false,
-            builder: (context, scrollController) =>
-                SingleChildScrollView(
-                  controller: scrollController,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 60,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              margin: EdgeInsets.only(top: 12),
+              width: 50,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+
+            // Header with gradient background
+            Container(
+              margin: EdgeInsets.all(20),
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isCanceledBooking(booking)
+                      ? [Colors.red.shade400, Colors.red.shade600]
+                      : [Color(0xFF6418C3), Color(0xFF7A30E0)],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: (isCanceledBooking(booking) ? Colors.red : Color(0xFF6418C3)).withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Icon(
+                          Icons.receipt_long,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Booking Details',
                               style: TextStyle(
-                                fontSize: 24,
+                                color: Colors.white,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            if (isCompletedBooking(booking) && !isCanceledBooking(booking))
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Add Review button in details view
-                                  PopupMenuButton<String>(
-                                    onSelected: (value) {
-                                      // Navigate to review page with the appropriate ID
-                                      _navigateToReview(value, booking);
-                                    },
-                                    itemBuilder: (context) =>
-                                    [
-                                      const PopupMenuItem(
-                                        value: 'property',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.home, size: 18),
-                                            SizedBox(width: 8),
-                                            Text('For Property'),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'hall',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.meeting_room, size: 18),
-                                            SizedBox(width: 8),
-                                            Text('For Hall'),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                    icon: const Icon(
-                                      Icons.rate_review,
-                                      color: Color(0xFF6418C3),
-                                      size: 20,
-                                    ),
-                                    tooltip: 'Add Review',
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // Completed badge
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.shade100,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.check_circle,
-                                          size: 14,
-                                          color: Colors.green.shade800,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Completed',
-                                          style: TextStyle(
-                                            color: Colors.green.shade800,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              )
-                            else if (isCanceledBooking(booking))
-                            // Canceled badge
+                            SizedBox(height: 4),
+                            Text(
+                              'ID: #${booking.id}',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Status badge
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getStatusIcon(booking.isPaid),
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              _getBookingStatusFromIsPaid(booking.isPaid),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    // Venue Information Card
+                    _buildDetailCard(
+                      title: 'Venue Information',
+                      icon: Icons.location_on,
+                      children: [
+                        _buildDetailItem(
+                          icon: Icons.business,
+                          label: 'Property',
+                          value: booking.propertyName ?? 'Unknown Property',
+                          iconColor: Color(0xFF6418C3),
+                        ),
+                        Divider(height: 20, color: Colors.grey[200]),
+                        _buildDetailItem(
+                          icon: Icons.meeting_room,
+                          label: 'Hall',
+                          value: booking.hallName ?? 'Unknown Hall',
+                          iconColor: Color(0xFF6418C3),
+                        ),
+                      ],
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Date & Time Information Card
+                    _buildDetailCard(
+                      title: 'Schedule Information',
+                      icon: Icons.schedule,
+                      children: [
+                        _buildDetailItem(
+                          icon: Icons.calendar_today,
+                          label: 'Date',
+                          value: formatDate(booking.date),
+                          iconColor: Color(0xFF6418C3),
+                        ),
+                        Divider(height: 20, color: Colors.grey[200]),
+                        _buildDetailItem(
+                          icon: Icons.access_time,
+                          label: 'Time Slot',
+                          value: '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}',
+                          iconColor: Color(0xFF6418C3),
+                        ),
+                        Divider(height: 20, color: Colors.grey[200]),
+                        _buildDetailItem(
+                          icon: Icons.timelapse,
+                          label: 'Duration',
+                          value: _calculateDuration(booking.slotFromTime, booking.slotToTime),
+                          iconColor: Color(0xFF6418C3),
+                        ),
+                      ],
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Booking Status Card
+                    _buildDetailCard(
+                      title: 'Booking Status',
+                      icon: _getStatusIcon(booking.isPaid),
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(booking.isPaid).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _getStatusColor(booking.isPaid).withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
+                                padding: EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.red.shade100,
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: _getStatusColor(booking.isPaid),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                                child: Icon(
+                                  _getStatusIcon(booking.isPaid),
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(
-                                      Icons.cancel,
-                                      size: 14,
-                                      color: Colors.red.shade800,
-                                    ),
-                                    const SizedBox(width: 4),
                                     Text(
-                                      'Canceled',
+                                      _getBookingStatusFromIsPaid(booking.isPaid),
                                       style: TextStyle(
-                                        color: Colors.red.shade800,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.bold,
+                                        color: _getStatusColor(booking.isPaid),
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      _getStatusDescription(booking.isPaid),
+                                      style: TextStyle(
                                         fontSize: 12,
+                                        color: Colors.grey[600],
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                          ],
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 20),
-                        _detailRow(
-                            'Property', booking.propertyName ?? 'Unknown'),
-                        _detailRow('Hall', booking.hallName ?? 'Unknown'),
-                        _detailRow('Date', formatDate(booking.date)),
-                        _detailRow('Time',
-                            '${formatTime(booking.slotFromTime)} - ${formatTime(
-                                booking.slotToTime)}'),
-                        _detailRow('Booking Status',
-                            _getBookingStatusFromIsPaid(booking.isPaid)),
-                        _detailRow('Booking ID', '${booking.id}'),
                       ],
                     ),
-                  ),
+
+                    SizedBox(height: 20),
+
+                    // Action Buttons
+                    if (isCompletedBooking(booking) && !isCanceledBooking(booking))
+                      Container(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            // Show review options
+                            showModalBottomSheet(
+                              context: context,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                              ),
+                              builder: (context) => Container(
+                                padding: EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Add Your Review',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 20),
+                                    _buildReviewOption(
+                                      icon: Icons.home,
+                                      title: 'Review Property',
+                                      subtitle: booking.propertyName ?? 'Unknown Property',
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        _navigateToReview('property', booking);
+                                      },
+                                    ),
+                                    SizedBox(height: 12),
+                                    _buildReviewOption(
+                                      icon: Icons.meeting_room,
+                                      title: 'Review Hall',
+                                      subtitle: booking.hallName ?? 'Unknown Hall',
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        _navigateToReview('hall', booking);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.rate_review, color: Colors.white),
+                          label: Text(
+                            'Add Review',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF6418C3),
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            elevation: 3,
+                          ),
+                        ),
+                      ),
+
+                    SizedBox(height: 20),
+                  ],
                 ),
-          ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+// Helper method to build detail cards
+  Widget _buildDetailCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF6418C3).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  color: Color(0xFF6418C3),
+                  size: 20,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+// Helper method to build detail items
+  Widget _buildDetailItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color iconColor,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: iconColor,
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
+    );
+  }
+
+// Helper method to build review options
+  Widget _buildReviewOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[200]!),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Color(0xFF6418C3).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: Color(0xFF6418C3),
+                size: 22,
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey[400],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+// Helper method to calculate duration
+  String _calculateDuration(String fromTime, String toTime) {
+    try {
+      if (fromTime.isEmpty || toTime.isEmpty || !fromTime.contains(':') || !toTime.contains(':'))
+        return 'N/A';
+
+      final fromParts = fromTime.split(':');
+      final toParts = toTime.split(':');
+
+      if (fromParts.length < 2 || toParts.length < 2) return 'N/A';
+
+      final fromHour = int.tryParse(fromParts[0]) ?? 0;
+      final fromMinute = int.tryParse(fromParts[1]) ?? 0;
+      final toHour = int.tryParse(toParts[0]) ?? 0;
+      final toMinute = int.tryParse(toParts[1]) ?? 0;
+
+      final fromTotalMinutes = fromHour * 60 + fromMinute;
+      final toTotalMinutes = toHour * 60 + toMinute;
+
+      final durationMinutes = toTotalMinutes - fromTotalMinutes;
+      final hours = durationMinutes ~/ 60;
+      final minutes = durationMinutes % 60;
+
+      if (hours > 0 && minutes > 0) {
+        return '${hours}h ${minutes}m';
+      } else if (hours > 0) {
+        return '${hours}h';
+      } else {
+        return '${minutes}m';
+      }
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+// Helper method to get status description
+  String _getStatusDescription(String isPaid) {
+    switch (isPaid) {
+      case 'b':
+        return 'This booking slot is temporarily blocked';
+      case 'c':
+        return 'Your booking has been confirmed';
+      case '0':
+        return 'Booking slot is available for reservation';
+      case '1':
+        return 'Booking confirmed and payment completed';
+      case 'cl':
+        return 'This booking has been cancelled';
+      default:
+        return 'Status information not available';
+    }
   }
 // Helper widget for detail rows in bottom sheet
   Widget _detailRow(String label, String value) {

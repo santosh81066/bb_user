@@ -19,5 +19,7 @@ class Bbapi {
   static String get updateUser => '$baseUrl/users/update'; // Update user
   static String get deleteUser => '$baseUrl/users/delete'; // Delete user
   static const String bbaddreview = "$baseUrl/bbaddreview";
+  static const String bbsupport = "$baseUrl/bbusersupport";
 
 }
+

@@ -1,132 +1,194 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:bb_user/Providers/auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/contactsupport.dart';
+import 'package:http/http.dart' as http;
 
-// Support service class
-class SupportService {
-  static const String baseUrl = 'http://www.gocodedesigners.com';
+final supportStateProvider = StateNotifierProvider<SupportStateNotifier, AsyncValue<void>>(
+      (ref) => SupportStateNotifier(ref),
+);
 
-  Future<SupportResponse> submitSupportRequest(SupportRequest request) async {
+class SupportStateNotifier extends StateNotifier<AsyncValue<void>> {
+  final Ref ref;
+
+  SupportStateNotifier(this.ref) : super(const AsyncValue.data(null));
+
+  Future<void> submitSupportRequest({
+    required String fullname,
+    required String email,
+    required String subject,
+    required String message,
+  }) async {
+    const url = "http://www.gocodedesigners.com/bbusersupport";
+
+    // Get the user ID from the auth provider
+    final authState = ref.read(authprovider);
+    final userId = authState.userId;
+
+    // Check if user is authenticated
+    if (userId == null) {
+      state = AsyncValue.error("User not authenticated", StackTrace.current);
+      return;
+    }
+
+    // Validate input data
+    if (fullname.trim().isEmpty) {
+      state = AsyncValue.error("Full name cannot be empty", StackTrace.current);
+      return;
+    }
+    if (email.trim().isEmpty) {
+      state = AsyncValue.error("Email cannot be empty", StackTrace.current);
+      return;
+    }
+    if (subject.trim().isEmpty) {
+      state = AsyncValue.error("Subject cannot be empty", StackTrace.current);
+      return;
+    }
+    if (message.trim().isEmpty) {
+      state = AsyncValue.error("Message cannot be empty", StackTrace.current);
+      return;
+    }
+
+    final body = {
+      "fullname": fullname.trim(),
+      "email": email.trim(),
+      "subject": subject.trim(),
+      "message": message.trim(),
+      "user_id": userId.toString(), // Ensure it's a string
+    };
+
     try {
-      final url = Uri.parse('$baseUrl/bbusersupport');
+      state = const AsyncValue.loading();
 
-      final requestBody = {
-        "fullname": request.fullname,
-        "email": request.email,
-        "subject": request.subject,
-        "message": request.message,
-        "user_id": request.userId,
+      // Updated headers with proper formatting
+      final headers = {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'application/json',
       };
 
-      if (kDebugMode) {
-        print('Sending support request to: $url');
-        print('Request body: ${jsonEncode(requestBody)}');
-      }
+      // Debug: Print the request details
+      print("=== SUPPORT REQUEST DEBUG ===");
+      print("URL: $url");
+      print("Headers: $headers");
+      print("Body: ${jsonEncode(body)}");
+      print("User ID: $userId (Type: ${userId.runtimeType})");
+      print("============================");
 
       final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode(requestBody),
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(body),
       );
 
-      if (kDebugMode) {
-        print('Response Status Code: ${response.statusCode}');
-        print('Response Body: ${response.body}');
-      }
+      print("=== RESPONSE DEBUG ===");
+      print("Status Code: ${response.statusCode}");
+      print("Response Headers: ${response.headers}");
+      print("Response Body: ${response.body}");
+      print("====================");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
-        return SupportResponse.fromJson(responseData);
+        print("Support request submitted successfully.");
+        state = const AsyncValue.data(null);
       } else {
-        throw Exception('Failed to submit support request. Status: ${response.statusCode}');
+        // Try to parse error response
+        String errorMessage = "Failed with status: ${response.statusCode}";
+
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData is Map<String, dynamic>) {
+            // Check for common error message fields
+            if (responseData.containsKey('messages') && responseData['messages'] is List) {
+              errorMessage = (responseData['messages'] as List).join(', ');
+            } else if (responseData.containsKey('error')) {
+              errorMessage = responseData['error'].toString();
+            } else if (responseData.containsKey('message')) {
+              errorMessage = responseData['message'].toString();
+            }
+          }
+        } catch (e) {
+          // If JSON parsing fails, use the raw response body
+          if (response.body.isNotEmpty) {
+            errorMessage = response.body;
+          }
+        }
+
+        print("Failed to submit support request. Status: ${response.statusCode}");
+        print("Error message: $errorMessage");
+        state = AsyncValue.error(errorMessage, StackTrace.current);
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error submitting support request: $e');
-      }
-      rethrow;
+    } catch (e, st) {
+      print("Exception occurred: $e");
+      print("Stack trace: $st");
+      state = AsyncValue.error("Network error: ${e.toString()}", st);
     }
   }
-}
 
-// Support response model
-class SupportResponse {
-  final int statusCode;
-  final bool success;
-  final List<String> messages;
-  final SupportData? data;
+  // Alternative method using form data if JSON continues to fail
+  Future<void> submitSupportRequestFormData({
+    required String fullname,
+    required String email,
+    required String subject,
+    required String message,
+  }) async {
+    const url = "http://www.gocodedesigners.com/bbusersupport";
 
-  SupportResponse({
-    required this.statusCode,
-    required this.success,
-    required this.messages,
-    this.data,
-  });
+    // Get the user ID from the auth provider
+    final authState = ref.read(authprovider);
+    final userId = authState.userId;
 
-  factory SupportResponse.fromJson(Map<String, dynamic> json) {
-    return SupportResponse(
-      statusCode: json['statusCode'] ?? 0,
-      success: json['success'] ?? false,
-      messages: List<String>.from(json['messages'] ?? []),
-      data: json['data'] != null ? SupportData.fromJson(json['data']) : null,
-    );
-  }
-}
-
-// Support data model (based on your Postman response)
-class SupportData {
-  final int id;
-  final String fullname;
-
-  SupportData({
-    required this.id,
-    required this.fullname,
-  });
-
-  factory SupportData.fromJson(Map<String, dynamic> json) {
-    return SupportData(
-      id: json['id'] ?? 0,
-      fullname: json['fullname'] ?? '',
-    );
-  }
-}
-
-// Provider for the support service
-final supportServiceProvider = Provider<SupportService>((ref) {
-  return SupportService();
-});
-
-// Provider for managing the support state
-final supportStateProvider =
-StateNotifierProvider<SupportStateNotifier, AsyncValue<SupportResponse?>>(
-        (ref) {
-      final supportService = ref.read(supportServiceProvider);
-      return SupportStateNotifier(supportService);
-    });
-
-// State notifier for support operations
-class SupportStateNotifier extends StateNotifier<AsyncValue<SupportResponse?>> {
-  final SupportService _supportService;
-
-  SupportStateNotifier(this._supportService) : super(const AsyncValue.data(null));
-
-  Future<void> submitSupportRequest(SupportRequest request) async {
-    state = const AsyncValue.loading();
+    if (userId == null) {
+      state = AsyncValue.error("User not authenticated", StackTrace.current);
+      return;
+    }
 
     try {
-      final response = await _supportService.submitSupportRequest(request);
-      state = AsyncValue.data(response);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
-  }
+      state = const AsyncValue.loading();
 
-  void resetState() {
-    state = const AsyncValue.data(null);
+      // Using MultipartRequest for form-data
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+
+      // Add form fields
+      request.fields.addAll({
+        'fullname': fullname.trim(),
+        'email': email.trim(),
+        'subject': subject.trim(),
+        'message': message.trim(),
+        'user_id': userId.toString(),
+      });
+
+      print("=== FORM DATA REQUEST DEBUG ===");
+      print("URL: $url");
+      print("Fields: ${request.fields}");
+      print("================================");
+
+      // Send request
+      http.StreamedResponse streamedResponse = await request.send();
+      http.Response response = await http.Response.fromStream(streamedResponse);
+
+      print("=== FORM DATA RESPONSE DEBUG ===");
+      print("Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+      print("===============================");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print("Support request submitted successfully via form data.");
+        state = const AsyncValue.data(null);
+      } else {
+        String errorMessage = "Failed with status: ${response.statusCode}";
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData is Map<String, dynamic> && responseData.containsKey('messages')) {
+            errorMessage = (responseData['messages'] as List).join(', ');
+          }
+        } catch (e) {
+          if (response.body.isNotEmpty) {
+            errorMessage = response.body;
+          }
+        }
+        state = AsyncValue.error(errorMessage, StackTrace.current);
+      }
+    } catch (e, st) {
+      print("Exception occurred: $e");
+      state = AsyncValue.error("Network error: ${e.toString()}", st);
+    }
   }
 }
