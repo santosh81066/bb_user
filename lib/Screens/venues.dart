@@ -73,17 +73,17 @@ class _ManageCalendarScreenState extends ConsumerState<Venuscreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F8),
-      body: SafeArea(
-        child: RefreshIndicator(
-          color: const Color(0xFF6418C3),
-          onRefresh: () async {
-            try {
-              await ref.read(propertyNotifierProvider.notifier).getproperty();
-              await ref.read(subscriptionProvider.notifier).fetchSubscriptions();
-            } catch (e) {
-              debugPrint('Error refreshing data: $e');
-            }
-          },
+      body: RefreshIndicator(
+        color: const Color(0xFF6418C3),
+        onRefresh: () async {
+          try {
+            await ref.read(propertyNotifierProvider.notifier).getproperty();
+            await ref.read(subscriptionProvider.notifier).fetchSubscriptions();
+          } catch (e) {
+            debugPrint('Error refreshing data: $e');
+          }
+        },
+        child: SizedBox(
           child: CustomScrollView(
             slivers: [
               // App Bar with Search

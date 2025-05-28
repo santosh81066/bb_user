@@ -46,7 +46,6 @@
           _isDeleting = true;
         });
 
-        // Get user ID from auth provider
         final authState = ref.read(authprovider);
         final userId = authState.userId;
 
@@ -54,25 +53,28 @@
           throw Exception("User ID not found");
         }
 
-        // Make API call to delete account
-        final response = await http.delete(
-          Uri.parse(Bbapi.login_mail),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
-            "id": userId,
-          }),
-        );
+        final url = Uri.parse(Bbapi.login_mail);
+        final request = http.Request("DELETE", url);
+        request.headers.addAll({
+          'Content-Type': 'application/json',
+        });
+        request.body = jsonEncode({
+          "id": userId.toString(),  // must be a string!
+        });
+
+        print('Request body: ${request.body}');
+        print('Sending DELETE to: $url');
+
+        final streamedResponse = await request.send();
+        final response = await http.Response.fromStream(streamedResponse);
+
+        print('User ID type: ${userId.runtimeType}');
+        print('Response status: ${response.statusCode}');
+        print('Response body: ${response.body}');
 
         if (response.statusCode == 200) {
-          // Account deleted successfully, now log out
           await logout(context, ref);
-
-          // Navigate to login or landing page
           Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-
-          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Your account has been deleted successfully'),
@@ -80,7 +82,6 @@
             ),
           );
         } else {
-          // Show error message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Failed to delete account: ${response.body}'),
@@ -89,7 +90,6 @@
           );
         }
       } catch (error) {
-        // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $error'),
@@ -104,6 +104,8 @@
         }
       }
     }
+
+
 
     void _showDeleteConfirmationDialog(BuildContext context, WidgetRef ref) {
       showDialog(

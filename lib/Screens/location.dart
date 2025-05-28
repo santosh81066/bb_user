@@ -32,7 +32,7 @@ class _LocationScreenState extends State<LocationScreen> {
       }
     }
   }
-   void _openInGoogleMaps() async {
+   void      _openInGoogleMaps() async {
      final lat = _currentLatLng.latitude;
      final lon = _currentLatLng.longitude;
 

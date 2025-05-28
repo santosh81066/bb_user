@@ -30,14 +30,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final extractData = json.decode(userDataString) as Map<String, dynamic>;
       // Debugging print
+      print("Auto login data: $extractData");
 
-      // Update the state with the retrieved data
+      // Update the state with the retrieved data including profile_pic
       state = AuthState.fromJson(extractData);
 
       // Verify state was updated
+      print("Auto login successful - profilePic: ${state.profilePic}");
 
       return true;
     } catch (e) {
+      print("Auto login error: $e");
       return false;
     }
   }
@@ -52,7 +55,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     var response = await http.post(Uri.parse(url),
         headers: {
           'Content-Type':
-              'application/json', // Set the content type to application/json
+          'application/json', // Set the content type to application/json
         },
         body: json.encode({
           "username": username!,
@@ -116,13 +119,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     var response = await http.post(Uri.parse(url),
         headers: {
           'Content-Type':
-              'application/json', // Set the content type to application/json
+          'application/json', // Set the content type to application/json
         },
         body: json.encode({"mobile_no": phonenum}));
     var userDetails = json.decode(response.body);
     switch (response.statusCode) {
       case 200:
-        // loadingState.state = false;
+      // loadingState.state = false;
         ref.read(enablepasswaorProvider.notifier).state = true;
         ref
             .read(phoneAuthProvider.notifier)
@@ -170,7 +173,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     var response = await http.post(Uri.parse(url),
         headers: {
           'Content-Type':
-              'application/json', // Set the content type to application/json
+          'application/json', // Set the content type to application/json
         },
         body: json.encode({"access_token": token}));
     var userDetails = json.decode(response.body);
@@ -184,8 +187,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
             token: userDataFromServer["access_token"],
             username: userDataFromServer["username"],
             email: userDataFromServer["email"],
-            mobileno: userDataFromServer["mobile_no"],
-            usertype: userDataFromServer["user_role"]);
+            mobileno: userDataFromServer["mobile_no"]?.toString(),
+            usertype: userDataFromServer["user_role"],
+            profilePic: userDataFromServer["profile_pic"]); // Added profile_pic
 
         final userData = json.encode({
           'user_id': state.userId,
@@ -194,8 +198,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'email': state.email,
           'mobile_no': state.mobileno,
           'user_role': state.usertype,
+          'profile_pic': state.profilePic, // Added profile_pic to storage
         });
         await prefs.setString('userData', userData);
+
+        print("OTP Login successful - profilePic: ${state.profilePic}");
         break;
       case 400:
         loadingState.state = false;
@@ -308,7 +315,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           // Make sure we're extracting the correct data format from the response
           var updatedUsername = userDetails["username"] ?? username;
           var updatedEmail = userDetails["email"] ?? email;
-          var updatedMobileNo = userDetails["mobile_no"] ?? phonenum;
+          var updatedMobileNo = userDetails["mobile_no"]?.toString() ?? phonenum;
           var updatedProfilePic = userDetails["profile_pic"];
 
           // Debug profile pic data
@@ -459,7 +466,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     var response = await http.post(Uri.parse(url),
         headers: {
           'Content-Type':
-              'application/json', // Set the content type to application/json
+          'application/json', // Set the content type to application/json
         },
         body: json.encode({
           "email": username!,
@@ -479,6 +486,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           email: userDataFromServer["email"] as String?,
           mobileno: userDataFromServer["mobile_no"].toString(), // Force String
           usertype: userDataFromServer["user_role"] as String?,
+          profilePic: userDataFromServer["profile_pic"] as String?, // Added profile_pic
         );
 
         final userData = json.encode({
@@ -488,8 +496,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'email': state.email,
           'mobile_no': state.mobileno,
           'user_role': state.usertype,
+          'profile_pic': state.profilePic, // Added profile_pic to storage
         });
         await prefs.setString('userData', userData);
+
+        print("Email login successful - profilePic: ${state.profilePic}");
         Navigator.of(context).pushNamed('/welcome');
         break;
       case 400:
@@ -537,6 +548,41 @@ class AuthNotifier extends StateNotifier<AuthState> {
         break;
     }
     // Handle other status codes as needed
+  }
+
+  // New method to fetch user list (based on your Postman response)
+  Future<List<Map<String, dynamic>>?> fetchUserList() async {
+    const url = 'http://www.gocodedesigners.com/bbadminlogin';
+
+    try {
+      var response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        var responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          return List<Map<String, dynamic>>.from(responseData['data']);
+        }
+      }
+      return null;
+    } catch (e) {
+      print("Error fetching user list: $e");
+      return null;
+    }
+  }
+
+  // Helper method to get full profile picture URL
+  String? getFullProfilePicUrl(String? profilePic) {
+    if (profilePic == null || profilePic.isEmpty) {
+      return null;
+    }
+
+    // If it's already a full URL, return as is
+    if (profilePic.startsWith('http')) {
+      return profilePic;
+    }
+
+    // Construct full URL - adjust base URL as needed
+    return 'http://www.gocodedesigners.com/$profilePic';
   }
 }
 

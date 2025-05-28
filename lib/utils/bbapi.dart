@@ -22,4 +22,3 @@ class Bbapi {
   static const String bbsupport = "$baseUrl/bbusersupport";
 
 }
-

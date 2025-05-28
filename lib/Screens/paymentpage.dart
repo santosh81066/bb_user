@@ -53,6 +53,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       userId = prefs.getInt('user_id');
     });
   }
+
   Future<String?> _createRazorpayOrder() async {
     try {
       // Prepare order data
@@ -71,7 +72,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
 
       // Send request to your backend to create Razorpay order
       final response = await http.post(
-        Uri.parse('https://www.gocodedesigners.com/bbcreateorder'),
+        Uri.parse('http://www.gocodedesigners.com/bbcreateorder'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(orderData),
       );
@@ -90,6 +91,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       return null;
     }
   }
+
   Future<void> _loadWalletBalance() async {
     setState(() {
       _isLoadingWallet = true;
@@ -139,7 +141,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       // Set a more descriptive payment description
       if (hallName != null) {
         _descriptionController.text =
-        "Booking payment for $hallName on $date from $slotFromTime to $slotToTime";
+            "Booking payment for $hallName on $date from $slotFromTime to $slotToTime";
       }
     }
   }
@@ -157,7 +159,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-   /* _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);*/
+    /* _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);*/
   }
 
   // Method to update booking status
@@ -223,8 +225,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
           paymentMethod: 'razorpay',
           paymentId: response.paymentId ?? '',
           amount: (price ?? 0).toDouble(),
-          isSuccess: true
-      );
+          isSuccess: true);
 
       if (success) {
         // Record the transaction to your backend
@@ -239,7 +240,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
         };
 
         final res = await http.post(
-          Uri.parse('https://www.gocodedesigners.com/bbtransactionhistory'),
+          Uri.parse('http://www.gocodedesigners.com/bbtransactionhistory'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode(transaction),
         );
@@ -277,9 +278,9 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       // Try to keep the booking as blocked even if there's an error
       try {
         await ref.read(hallBookingProvider.notifier).updateBookingPaymentStatus(
-          bookingId: bookingId ?? 0,
-          status: 'b', // Keep as blocked
-        );
+              bookingId: bookingId ?? 0,
+              status: 'b', // Keep as blocked
+            );
       } catch (_) {
         // Silently handle this error to avoid additional user confusion
       }
@@ -314,7 +315,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       };
 
       final res = await http.post(
-        Uri.parse('https://www.gocodedesigners.com/bbtransactionhistory'),
+        Uri.parse('http://www.gocodedesigners.com/bbtransactionhistory'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(failedTransaction),
       );
@@ -388,21 +389,23 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                   final newBalance = await _firebaseService.getWalletBalance();
 
                   // Generate a unique wallet payment ID
-                  final walletPaymentId = 'wallet_${DateTime.now().millisecondsSinceEpoch}_${userId ?? 0}';
+                  final walletPaymentId =
+                      'wallet_${DateTime.now().millisecondsSinceEpoch}_${userId ?? 0}';
 
                   // Update booking payment status using the new method
-                  final hallBookingNotifier = ref.read(hallBookingProvider.notifier);
-                  final success = await hallBookingNotifier.updateBookingWithPayment(
-                      hallId: hallId ?? 0,
-                      bookingId: bookingId,
-                      date: date,
-                      slotFromTime: slotFromTime,
-                      slotToTime: slotToTime,
-                      paymentMethod: 'wallet',
-                      paymentId: walletPaymentId,
-                      amount: priceAmount,
-                      isSuccess: true
-                  );
+                  final hallBookingNotifier =
+                      ref.read(hallBookingProvider.notifier);
+                  final success =
+                      await hallBookingNotifier.updateBookingWithPayment(
+                          hallId: hallId ?? 0,
+                          bookingId: bookingId,
+                          date: date,
+                          slotFromTime: slotFromTime,
+                          slotToTime: slotToTime,
+                          paymentMethod: 'wallet',
+                          paymentId: walletPaymentId,
+                          amount: priceAmount,
+                          isSuccess: true);
 
                   if (success) {
                     // Record the transaction to your backend as well
@@ -418,7 +421,8 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                       };
 
                       final res = await http.post(
-                        Uri.parse('https://www.gocodedesigners.com/bbtransactionhistory'),
+                        Uri.parse(
+                            'http://www.gocodedesigners.com/bbtransactionhistory'),
                         headers: {'Content-Type': 'application/json'},
                         body: jsonEncode(transaction),
                       );
@@ -444,9 +448,9 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                       } else {
                         // Even if transaction recording fails, the payment and booking were successful
                         Fluttertoast.showToast(
-                            msg: "Payment successful but transaction recording failed",
-                            toastLength: Toast.LENGTH_LONG
-                        );
+                            msg:
+                                "Payment successful but transaction recording failed",
+                            toastLength: Toast.LENGTH_LONG);
 
                         setState(() {
                           _walletBalance = newBalance;
@@ -461,7 +465,8 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                         }
                       }
                     } catch (e) {
-                      Fluttertoast.showToast(msg: "Error saving transaction: $e");
+                      Fluttertoast.showToast(
+                          msg: "Error saving transaction: $e");
 
                       // Update wallet balance in state even if there's an error
                       setState(() {
@@ -478,7 +483,8 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                     }
                   } else {
                     Fluttertoast.showToast(
-                      msg: "Wallet payment successful but booking update failed",
+                      msg:
+                          "Wallet payment successful but booking update failed",
                       toastLength: Toast.LENGTH_LONG,
                     );
 
@@ -490,7 +496,8 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                 } else {
                   // Wallet deduction failed - could be insufficient balance or other error
                   Fluttertoast.showToast(
-                    msg: "Wallet payment failed. Please try again or use another payment method.",
+                    msg:
+                        "Wallet payment failed. Please try again or use another payment method.",
                     toastLength: Toast.LENGTH_LONG,
                   );
 
@@ -518,6 +525,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       ),
     );
   }
+
   void _openRazorpayPayment() {
     String mobile = _mobileController.text.trim();
     String email = _emailController.text.trim();
@@ -539,9 +547,9 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
         );
       },
     );
-   /* final orderId = await _createRazorpayOrder();*/
+    /* final orderId = await _createRazorpayOrder();*/
     // Close loading dialog
-   /* Navigator.pop(context);
+    /* Navigator.pop(context);
 
     if (orderId == null) {
       Fluttertoast.showToast(
@@ -643,7 +651,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
 
                     final res = await http.post(
                       Uri.parse(
-                          'https://www.gocodedesigners.com/bbtransactionhistory'),
+                          'http://www.gocodedesigners.com/bbtransactionhistory'),
                       headers: {'Content-Type': 'application/json'},
                       body: jsonEncode(transaction),
                     );
@@ -938,14 +946,14 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                   const Text('My balance', style: TextStyle(fontSize: 16)),
                   _isLoadingWallet
                       ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ))
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ))
                       : Text('₹ $_walletBalance',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -956,7 +964,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
               decoration: InputDecoration(
                 labelText: 'Email Address',
                 border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.email),
               ),
             ),
@@ -967,7 +975,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
               decoration: InputDecoration(
                 labelText: 'Mobile Number',
                 border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.phone),
               ),
             ),
@@ -978,7 +986,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
               decoration: InputDecoration(
                 labelText: 'Payment Description',
                 border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.description),
               ),
             ),
@@ -1088,7 +1096,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                   const SizedBox(height: 4),
                   Text(subtitle,
                       style:
-                      TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                          TextStyle(color: Colors.grey.shade600, fontSize: 14)),
                 ],
               ),
             ),

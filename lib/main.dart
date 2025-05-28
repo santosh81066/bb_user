@@ -336,7 +336,7 @@ class MyApp extends ConsumerWidget {
           return const LocationScreen();
         },
         '/venue_details': (BuildContext context) {
-          return const HallsCalendarScreen();
+          return const StepByStepHallBookingScreen();
         },
         '/payment': (BuildContext context) {
           return const PaymentPage();

@@ -31,7 +31,7 @@ android {
         applicationId = "com.bb_user"
         minSdk = 23 // Update as per your project requirements
         targetSdk = 34
-        versionCode = 15
+        versionCode = 16
         versionName = flutterVersionName
     }
     signingConfigs {

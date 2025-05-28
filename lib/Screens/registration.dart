@@ -2,16 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../Widgets/evaluatedbutton.dart';
-import '../Widgets/heading.dart';
-import '../Widgets/textfield.dart';
 import 'dart:io';
 
 import 'package:bb_user/Colors/coustcolors.dart';
 import 'package:bb_user/Providers/registrationnotifier.dart';
 import 'package:bb_user/models/registrationstatemodel.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:bb_user/Widgets/text.dart';
 
 // Step 1: Define the StateNotifierProvider
 final registrationProvider = StateNotifierProvider<RegistrationNotifier, RegistrationState>((ref) {

@@ -1,4 +1,4 @@
-package com.bbuser
+package com.bb_user;
 
 import io.flutter.embedding.android.FlutterActivity
 
