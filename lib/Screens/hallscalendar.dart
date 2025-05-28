@@ -236,136 +236,175 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
   }
 
   Widget _buildStep1(List<Hall> halls) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Calculate responsive dimensions
+    final selectedCardHeight = screenHeight * 0.28; // 28% of screen height
+    final unselectedCardHeight = screenHeight * 0.25; // 22% of screen height
+    final horizontalPadding = screenWidth * 0.04; // 4% of screen width
+    final cardMargin = screenHeight * 0.015; // 1.5% of screen height
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Column(
         children: [
           _buildHeader('Choose Your Perfect Hall', Icons.home_work),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 500,
-            child: PageView.builder(
-              controller: _hallPageController,
-              onPageChanged: (index) => setState(() => selectedHallIndex = index),
+          SizedBox(height: screenHeight * 0.02), // 1.5% of screen height
+          Flexible(
+            child: ListView.builder(
+
               itemCount: halls.length,
-              itemBuilder: (context, index) => AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: EdgeInsets.symmetric(
-                  horizontal: selectedHallIndex == index ? 10 : 20,
-                  vertical: selectedHallIndex == index ? 0 : 20,
+              itemBuilder: (context, index) => GestureDetector(
+                onTap: () => setState(() => selectedHallIndex = index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: EdgeInsets.only(
+                    bottom: cardMargin,
+                    left: selectedHallIndex == index ? 0 : screenWidth * 0.02,
+                    right: selectedHallIndex == index ? 0 : screenWidth * 0.02,
+                  ),
+                  height: selectedHallIndex == index ? selectedCardHeight : unselectedCardHeight,
+                  child: HallSelection(
+                    hall: halls[index],
+                    isSelected: selectedHallIndex == index,
+                  ),
                 ),
-                child: HallSelection(hall: halls[index], isSelected: selectedHallIndex == index),
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          _buildIndicator(halls.length),
         ],
       ),
     );
   }
 
-  Widget _buildIndicator(int count) => Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: List.generate(count, (index) => AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      width: selectedHallIndex == index ? 24 : 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: selectedHallIndex == index ? Colors.deepPurple : Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(4),
-      ),
-    )),
-  );
+  Widget _buildEmpty(String message, IconData icon) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
 
-  Widget _buildEmpty(String message, IconData icon) => Container(
-    padding: const EdgeInsets.all(40),
-    child: Column(
-      children: [
-        Icon(icon, size: 80, color: Colors.grey.shade300),
-        const SizedBox(height: 20),
-        Text(message,
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-            textAlign: TextAlign.center),
-      ],
-    ),
-  );
-
-  Widget _buildHeader(String title, IconData icon) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade600]),
-      borderRadius: BorderRadius.circular(15),
-    ),
-    child: Row(
-      children: [
-        _iconContainer(icon, Colors.white.withOpacity(0.2)),
-        const SizedBox(width: 15),
-        Expanded(
-          child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-        ),
-      ],
-    ),
-  );
-
-  Widget _iconContainer(IconData icon, [Color? backgroundColor]) => Container(
-    padding: const EdgeInsets.all(8),
-    decoration: BoxDecoration(
-      color: backgroundColor ?? Colors.deepPurple.shade100,
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Icon(icon, color: backgroundColor != null ? Colors.white : Colors.deepPurple, size: 24),
-  );
-
-  Widget _buildStepIndicator() => Container(
-    padding: const EdgeInsets.all(20),
-    child: Row(
-      children: List.generate(4, (index) {
-        bool isCompleted = index < currentStep;
-        bool isCurrent = index == currentStep;
-
-        return Expanded(
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isCompleted || isCurrent ? Colors.deepPurple : Colors.grey.shade300,
-                  boxShadow: isCompleted || isCurrent ? [
-                    BoxShadow(color: Colors.deepPurple.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2)),
-                  ] : null,
-                ),
-                child: Center(
-                  child: isCompleted
-                      ? const Icon(Icons.check, color: Colors.white, size: 20)
-                      : Text('${index + 1}',
-                      style: TextStyle(
-                          color: isCompleted || isCurrent ? Colors.white : Colors.grey.shade600,
-                          fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.1), // 10% of screen width
+      child: Column(
+        children: [
+          Icon(icon, size: screenWidth * 0.2, color: Colors.grey.shade300), // 20% of screen width
+          SizedBox(height: screenHeight * 0.025), // 2.5% of screen height
+          Text(
+              message,
+              style: TextStyle(
+                  fontSize: screenWidth * 0.04, // 4% of screen width
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500
               ),
-              if (index < 3)
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: 3,
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: isCompleted ? Colors.deepPurple : Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+              textAlign: TextAlign.center
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(String title, IconData icon) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.04), // 4% of screen width
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade600]),
+        borderRadius: BorderRadius.circular(screenWidth * 0.038), // ~15px on most screens
+      ),
+      child: Row(
+        children: [
+          _iconContainer(icon, Colors.white.withOpacity(0.2)),
+          SizedBox(width: screenWidth * 0.038), // ~15px spacing
+          Expanded(
+            child: Text(
+                title,
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: screenWidth * 0.05, // Responsive font size
+                    fontWeight: FontWeight.bold
+                )
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _iconContainer(IconData icon, [Color? backgroundColor]) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.02), // 2% of screen width
+      decoration: BoxDecoration(
+        color: backgroundColor ?? Colors.deepPurple.shade100,
+        borderRadius: BorderRadius.circular(screenWidth * 0.025), // ~10px on most screens
+      ),
+      child: Icon(
+          icon,
+          color: backgroundColor != null ? Colors.white : Colors.deepPurple,
+          size: screenWidth * 0.06 // Responsive icon size
+      ),
+    );
+  }
+
+/*  Widget _buildStepIndicator() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: screenWidth * 0.05, // 5% of screen width
+          vertical: screenHeight * 0.02   // 2% of screen height
+      ),
+      child: Row(
+        children: List.generate(4, (index) {
+          bool isCompleted = index < currentStep;
+          bool isCurrent = index == currentStep;
+
+          return Expanded(
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: screenWidth * 0.09,  // 9% of screen width
+                  height: screenWidth * 0.09, // Keep it circular
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isCompleted || isCurrent ? Colors.deepPurple : Colors.grey.shade300,
+                    boxShadow: isCompleted || isCurrent ? [
+                      BoxShadow(color: Colors.deepPurple.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2)),
+                    ] : null,
+                  ),
+                  child: Center(
+                    child: isCompleted
+                        ? Icon(Icons.check, color: Colors.white, size: screenWidth * 0.045)
+                        : Text('${index + 1}',
+                        style: TextStyle(
+                            color: isCompleted || isCurrent ? Colors.white : Colors.grey.shade600,
+                            fontWeight: FontWeight.bold,
+                            fontSize: screenWidth * 0.035)),
                   ),
                 ),
-            ],
-          ),
-        );
-      }),
-    ),
-  );
+                if (index < 3)
+                  Expanded(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      height: screenHeight * 0.004, // Responsive line height
+                      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
+                      decoration: BoxDecoration(
+                        color: isCompleted ? Colors.deepPurple : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }*/
 
   Widget _buildNavigationButtons() => Container(
     padding: const EdgeInsets.all(20),
@@ -442,35 +481,53 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
           children: [
             Text(
               property.propertyName ?? 'Hall Booking',
-              style: const TextStyle(fontSize: 18, color: Colors.deepPurple, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width * 0.045, // Responsive font size
+                  color: Colors.deepPurple,
+                  fontWeight: FontWeight.bold
+              ),
             ),
             if (property.address != null)
-              Text(property.address!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              Text(
+                  property.address!,
+                  style: TextStyle(
+                      fontSize: MediaQuery.of(context).size.width * 0.03, // Responsive font size
+                      color: Colors.grey.shade600
+                  )
+              ),
           ],
         ),
         leading: IconButton(
           icon: Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.02),
             decoration: BoxDecoration(
               color: Colors.deepPurple.shade50,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(MediaQuery.of(context).size.width * 0.025),
             ),
-            child: const Icon(Icons.arrow_back, color: Colors.deepPurple),
+            child: Icon(
+              Icons.arrow_back,
+              color: Colors.deepPurple,
+              size: MediaQuery.of(context).size.width * 0.06,
+            ),
           ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Column(
         children: [
-          _buildStepIndicator(),
+          /*_buildStepIndicator(),*/
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SingleChildScrollView(
-                child: switch (currentStep) {
-                  0 => _buildStep1(halls),
-                  1 => EnhancedHallFeatures(selectedHall),
-                  2 => Dateselection(
+              padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width * 0.04),
+              child: switch (currentStep) {
+              // Wrap step 0 in a proper container to handle flex overflow
+                0 => Container(
+                  constraints: const BoxConstraints(maxHeight: double.infinity),
+                  child: _buildStep1(halls),
+                ),
+                1 => SingleChildScrollView(child: EnhancedHallFeatures(selectedHall)),
+                2 => SingleChildScrollView(
+                  child: Dateselection(
                     selectedDay: selectedDay,
                     selectedYear: selectedYear,
                     selectedMonth: selectedMonth,
@@ -492,16 +549,18 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
                       });
                     },
                   ),
-                  3 => Slotselection(
+                ),
+                3 => SingleChildScrollView(
+                  child: Slotselection(
                     hall: selectedHall,
                     selectedDay: selectedDay,
                     selectedSlot: selectedSlot,
                     bookingStatuses: bookingStatuses,
                     onSlotSelected: (slot) => setState(() => selectedSlot = slot),
                   ),
-                  _ => const SizedBox(),
-                },
-              ),
+                ),
+                _ => const SizedBox(),
+              },
             ),
           ),
           _buildNavigationButtons(),

@@ -309,7 +309,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       fontWeight: FontWeight.bold,
                       color: Colors.black87)),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.of(context).pushNamed(
+                    '/properties',
+
+                  );
+                },
                 child: Text("View All",
                     style: GoogleFonts.poppins(
                         color: CoustColors.colrHighlightedText,

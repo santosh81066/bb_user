@@ -264,11 +264,11 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: IconButton(
+                             /* child: IconButton(
                                 icon: Icon(
                                     Icons.arrow_back, color: Colors.white),
                                 onPressed: () => Navigator.of(context).pop(),
-                              ),
+                              ),*/
                             ),
                             SizedBox(width: 16),
                             Text(

@@ -13,5 +13,5 @@ class CoustColors {
   static const Color colrButton3 = Color(0xFF6418C3);
   static const Color colrFill = Color(0xFFF3F3F3);
   static const Color colrStrock1 = Color(0xFF6418C3);
-  static const Color colrStrock2 = Color(0xFFEA5455);
+  static const Color colrStrock2 = Color(0xFFF6B230);
 }

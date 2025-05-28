@@ -1,4 +1,4 @@
-class RatingState{
+/**/class RatingState{
   final int? id;
   final int? rating;
   final String? review;

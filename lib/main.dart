@@ -20,6 +20,7 @@ import 'Screens/registration.dart';
 import 'Screens/review.dart';
 import 'Screens/settings.dart';
 import 'Screens/upcoming.dart';
+import 'Screens/venues.dart';
 import 'Screens/walletscreen.dart';
 import 'Widgets/bottomnavigation.dart';
 import 'firebase_options.dart';
@@ -338,6 +339,10 @@ class MyApp extends ConsumerWidget {
         '/venue_details': (BuildContext context) {
           return const StepByStepHallBookingScreen();
         },
+        '/properties': (BuildContext context) {
+          return const Venuscreen();
+        },
+
         '/payment': (BuildContext context) {
           return const PaymentPage();
         },

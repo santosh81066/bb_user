@@ -1,3 +1,4 @@
+/*
 class Propertystate {
   final int? id;
   final String? propertyPic;
@@ -103,3 +104,4 @@ class Propertystate {
     );
   }
 }
+*/
