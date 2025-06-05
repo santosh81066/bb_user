@@ -110,19 +110,24 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     }
 
     try {
+      print('Processing Razorpay payment success...');
       final hallBookingNotifier = ref.read(hallBookingProvider.notifier);
+
+      // Update booking with payment details
       final success = await hallBookingNotifier.updateBookingWithPayment(
-          hallId: hallId ?? 0,
-          bookingId: bookingId,
-          date: date,
-          slotFromTime: slotFromTime,
-          slotToTime: slotToTime,
-          paymentMethod: 'razorpay',
-          paymentId: response.paymentId ?? '',
-          amount: (price ?? 0).toDouble(),
-          isSuccess: true);
+        hallId: hallId ?? 0,
+        bookingId: bookingId,
+        date: date,
+        slotFromTime: slotFromTime,
+        slotToTime: slotToTime,
+        paymentMethod: 'razorpay',
+        paymentId: response.paymentId ?? '',
+        amount: (price ?? 0).toDouble(),
+        isSuccess: true,
+      );
 
       if (success) {
+        // Record transaction with success status
         await _recordTransaction({
           'user_id': userId,
           'razorpay_payment_id': response.paymentId,
@@ -130,39 +135,100 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
           'razorpay_signature': response.signature,
           'amt': price ?? 0,
           'payment_method': 'razorpay',
-          'status': 'success'
+          'status': 'success',
+          'booking_id': bookingId,
+          'is_paid': true,
         });
 
-        Fluttertoast.showToast(msg: "Payment successful!");
+        Fluttertoast.showToast(msg: "Payment successful! Booking confirmed.");
         onPaymentSuccess?.call(true);
         Navigator.pop(context);
       } else {
-        Fluttertoast.showToast(msg: "Error updating booking status");
+        // Payment processing failed
+        await _recordTransaction({
+          'user_id': userId,
+          'razorpay_payment_id': response.paymentId,
+          'razorpay_order_id': response.orderId,
+          'razorpay_signature': response.signature,
+          'amt': price ?? 0,
+          'payment_method': 'razorpay',
+          'status': 'failed',
+          'booking_id': bookingId,
+          'is_paid': false,
+        });
+
+        Fluttertoast.showToast(
+            msg:
+                "Payment received but booking update failed. Please contact support.");
       }
     } catch (e) {
+      print('Error processing Razorpay payment: $e');
+
+      // Record failed transaction
+      await _recordTransaction({
+        'user_id': userId,
+        'razorpay_payment_id': response.paymentId,
+        'razorpay_order_id': response.orderId,
+        'razorpay_signature': response.signature,
+        'amt': price ?? 0,
+        'payment_method': 'razorpay',
+        'status': 'error',
+        'booking_id': bookingId,
+        'is_paid': false,
+        'error_message': e.toString(),
+      });
+
       Fluttertoast.showToast(msg: "Error processing payment: $e");
+
+      // Try to update booking status to failed
       try {
-        await ref.read(hallBookingProvider.notifier).updateBookingPaymentStatus(
-              bookingId: bookingId ?? 0,
-              status: 'b',
-            );
-      } catch (_) {}
+        if (bookingId != null) {
+          await ref
+              .read(hallBookingProvider.notifier)
+              .updateBookingPaymentStatus(
+                bookingId: bookingId!,
+                status: 'n', // failed
+              );
+        }
+      } catch (fallbackError) {
+        print('Failed to update booking status to failed: $fallbackError');
+      }
     }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) async {
+    print('Razorpay payment failed: ${response.message}');
     Fluttertoast.showToast(msg: "Payment Failed: ${response.message}");
 
     if (userId != null) {
+      // Record failed transaction
       await _recordTransaction({
         'user_id': userId,
         'razorpay_payment_id': '',
         'razorpay_order_id': '',
         'razorpay_signature': '',
-        'amt': price ?? 1,
+        'amt': price ?? 0,
         'status': 'failed',
-        'payment_method': 'razorpay'
+        'payment_method': 'razorpay',
+        'booking_id': bookingId,
+        'is_paid': false,
+        'error_message': response.message,
       });
+
+      // Update booking status to failed if we have a booking ID
+      if (bookingId != null) {
+        try {
+          await ref
+              .read(hallBookingProvider.notifier)
+              .updateBookingPaymentStatus(
+                bookingId: bookingId!,
+                status: 'n', // failed
+              );
+          print('Updated booking status to failed');
+        } catch (e) {
+          print('Failed to update booking status: $e');
+        }
+      }
     }
 
     onPaymentSuccess?.call(false);
@@ -170,11 +236,20 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
 
   Future<void> _recordTransaction(Map<String, dynamic> transaction) async {
     try {
-      await http.post(
+      print('Recording transaction: ${transaction['status']}');
+
+      final response = await http.post(
         Uri.parse('http://www.gocodedesigners.com/bbtransactionhistory'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(transaction),
       );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Transaction recorded successfully');
+      } else {
+        print('Failed to record transaction: ${response.statusCode}');
+        print('Response: ${response.body}');
+      }
     } catch (e) {
       print("Error recording transaction: $e");
     }
@@ -214,6 +289,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
 
   Future<void> _processWalletPayment() async {
     _showLoadingDialog();
+    print('Processing wallet payment...');
 
     try {
       final priceAmount = (price ?? 0).toDouble();
@@ -221,29 +297,38 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
           ? "Booking payment for $hallName"
           : "Banquet Booking Payment";
 
+      // First, deduct from wallet
       final deductionResult = await _firebaseService.deductFromWallet(
           priceAmount, bookingDescription);
-      Navigator.pop(context); // Close loading
+
+      Navigator.pop(context); // Close loading dialog
 
       if (deductionResult) {
+        print('Wallet deduction successful, updating booking...');
+
         final newBalance = await _firebaseService.getWalletBalance();
         final walletPaymentId =
             'wallet_${DateTime.now().millisecondsSinceEpoch}_${userId ?? 0}';
 
+        // Update booking with payment details
         final success = await ref
             .read(hallBookingProvider.notifier)
             .updateBookingWithPayment(
-                hallId: hallId ?? 0,
-                bookingId: bookingId,
-                date: date,
-                slotFromTime: slotFromTime,
-                slotToTime: slotToTime,
-                paymentMethod: 'wallet',
-                paymentId: walletPaymentId,
-                amount: priceAmount,
-                isSuccess: true);
+              hallId: hallId ?? 0,
+              bookingId: bookingId,
+              date: date,
+              slotFromTime: slotFromTime,
+              slotToTime: slotToTime,
+              paymentMethod: 'wallet',
+              paymentId: walletPaymentId,
+              amount: priceAmount,
+              isSuccess: true,
+            );
 
         if (success) {
+          print('Booking updated successfully after wallet payment');
+
+          // Record successful transaction
           await _recordTransaction({
             'user_id': userId,
             'razorpay_payment_id': walletPaymentId,
@@ -251,21 +336,92 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
             'razorpay_signature': '',
             'amt': price ?? 0,
             'payment_method': 'wallet',
-            'status': 'success'
+            'status': 'success',
+            'booking_id': bookingId,
+            'is_paid': true,
           });
+
+          setState(() => _walletBalance = newBalance);
+          _showSuccessDialog(newBalance);
+          onPaymentSuccess?.call(true);
+        } else {
+          print('Booking update failed after wallet payment');
+
+          // Booking update failed, record failed transaction
+          await _recordTransaction({
+            'user_id': userId,
+            'razorpay_payment_id': walletPaymentId,
+            'razorpay_order_id': '',
+            'razorpay_signature': '',
+            'amt': price ?? 0,
+            'payment_method': 'wallet',
+            'status': 'failed',
+            'booking_id': bookingId,
+            'is_paid': false,
+            'error_message': 'Booking update failed after wallet deduction',
+          });
+
+          Fluttertoast.showToast(
+              msg:
+                  "Wallet payment deducted but booking update failed. Please contact support.");
+
+          // Try to refund the wallet (if your system supports it)
+          // await _firebaseService.addToWallet(priceAmount, "Refund for failed booking");
+        }
+      } else {
+        print('Wallet deduction failed');
+
+        // Record failed transaction
+        await _recordTransaction({
+          'user_id': userId,
+          'razorpay_payment_id': '',
+          'razorpay_order_id': '',
+          'razorpay_signature': '',
+          'amt': price ?? 0,
+          'payment_method': 'wallet',
+          'status': 'failed',
+          'booking_id': bookingId,
+          'is_paid': false,
+          'error_message': 'Wallet deduction failed',
+        });
+
+        // Update booking status to failed if we have a booking ID
+        if (bookingId != null) {
+          try {
+            await ref
+                .read(hallBookingProvider.notifier)
+                .updateBookingPaymentStatus(
+                  bookingId: bookingId!,
+                  status: 'n', // failed
+                );
+          } catch (e) {
+            print('Failed to update booking status: $e');
+          }
         }
 
-        setState(() => _walletBalance = newBalance);
-        _showSuccessDialog(newBalance);
-        onPaymentSuccess?.call(true);
-      } else {
         Fluttertoast.showToast(
             msg:
                 "Wallet payment failed. Please try again or use another payment method.");
         _loadWalletBalance();
       }
     } catch (e) {
+      print('Error processing wallet payment: $e');
       if (Navigator.canPop(context)) Navigator.pop(context);
+
+      // Record error transaction
+      await _recordTransaction({
+        'user_id': userId,
+        'razorpay_payment_id': '',
+        'razorpay_order_id': '',
+        'razorpay_signature': '',
+        'amt': price ?? 0,
+        'payment_method': 'wallet',
+        'status': 'error',
+        'booking_id': bookingId,
+        'is_paid': false,
+        'error_message': e.toString(),
+      });
+
       Fluttertoast.showToast(msg: "Error processing wallet payment: $e");
       _loadWalletBalance();
     }
