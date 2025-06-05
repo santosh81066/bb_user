@@ -1,10 +1,8 @@
 plugins {
     id "com.android.application"
-    // START: FlutterFire Configuration
     id 'com.google.gms.google-services'
-    // END: FlutterFire Configuration
     id "kotlin-android"
-    id "dev.flutter.flutter-gradle-plugin" // Flutter plugin
+    id "dev.flutter.flutter-gradle-plugin"
 }
 
 def localProperties = new Properties()
@@ -15,8 +13,16 @@ if (localPropertiesFile.exists()) {
     }
 }
 
-def flutterVersionCode = localProperties.getProperty("flutter.versionCode", "1")
-def flutterVersionName = localProperties.getProperty("flutter.versionName", "1.0")
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
+if (flutterVersionCode == null) {
+    flutterVersionCode = "17"
+}
+
+def flutterVersionName = localProperties.getProperty("flutter.versionName")
+if (flutterVersionName == null) {
+    flutterVersionName = "1.0"
+}
+
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
@@ -25,20 +31,22 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.bb_user"
-    compileSdk = 35 // Specify the correct compileSdkVersion
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.bb_user"
-        minSdk = 23 // Update as per your project requirements
-        targetSdk = 34
-        versionCode = 16
+        minSdk = 23
+        targetSdk = 35
+        versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
+        multiDexEnabled true
     }
+
     signingConfigs {
         release {
             keyAlias keystoreProperties['keyAlias']
             keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
+            storeFile keystoreProperties.containsKey('storeFile') ? file(keystoreProperties['storeFile']) : null
             storePassword keystoreProperties['storePassword']
         }
     }
@@ -52,14 +60,14 @@ android {
         }
     }
 
-    kotlinOptions {
-        jvmTarget = "17" // Ensure Kotlin JVM target compatibility
-    }
-
     compileOptions {
         coreLibraryDesugaringEnabled true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
     }
 }
 
@@ -75,4 +83,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-auth:22.3.0'
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.core:core:1.12.0'
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
+    implementation 'com.facebook.android:facebook-android-sdk:16.2.0'
+    implementation 'androidx.multidex:multidex:2.0.1'
 }

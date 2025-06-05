@@ -27,6 +27,7 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
   DateTime? selectedDay;
   String? selectedSlot;
   Map<String, BookingStatus> bookingStatuses = {};
+  Map<String, int> bookingUserIds = {};
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   final PageController _hallPageController = PageController();
@@ -65,9 +66,11 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
   }
 
   BookingStatus _mapStatusCode(String code) => switch (code) {
-    'c' => BookingStatus.confirmed,
-    'b' => BookingStatus.blocked,
-    _ => BookingStatus.available,
+    'c' => BookingStatus.confirmed,  // Confirmed/Paid
+    'b' => BookingStatus.blocked,    // Blocked/Pending payment
+    'cl' => BookingStatus.available, // Cancelled (back to available)
+    'n' => BookingStatus.available,  // Failed payment (back to available)
+    _ => BookingStatus.available,    // Default to available
   };
 
   void _loadExistingBookings() async {
@@ -81,15 +84,23 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
       if (response.statusCode == 200) {
         final List bookings = jsonDecode(response.body)['data'];
         final updatedStatuses = <String, BookingStatus>{};
+        final updatedUserIds = <String, int>{};
 
         for (var booking in bookings) {
           final key = _getBookingKey(booking['hall_id'], booking['date'],
               booking['slot_from_time'], booking['slot_to_time']);
           updatedStatuses[key] = _mapStatusCode(booking['is_paid']);
+          updatedUserIds[key] = booking['user_id'];
         }
 
-        if (mounted) setState(() => bookingStatuses = updatedStatuses);
+        if (mounted) {
+          setState(() {
+          bookingStatuses = updatedStatuses;
+          bookingUserIds = updatedUserIds; // Add this line
+        });
+        }
       }
+
     } catch (e) {
       debugPrint("Error loading bookings: $e");
     }
@@ -128,7 +139,7 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
     }
   }
 
-  void _goToPayment() {
+  void _goToPayment() async {
     final args = ModalRoute.of(context)?.settings.arguments as Map;
     final Data property = args['property'];
     final hall = property.halls![selectedHallIndex];
@@ -138,19 +149,89 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
     final slotParts = selectedSlot!.split('From: ')[1].split(' To: ');
     final formattedDate = "${selectedDay!.year}-${selectedDay!.month.toString().padLeft(2, '0')}-${selectedDay!.day.toString().padLeft(2, '0')}";
 
-    Navigator.pushNamed(context, '/payment', arguments: {
-      'hallId': hall.hallId,
-      'date': formattedDate,
-      'slotFromTime': slotParts[0],
-      'slotToTime': slotParts[1],
-      'hallName': hall.name,
-      'price': hall.price,
-      'onPaymentSuccess': (bool success) {
-        if (success) _handlePaymentSuccess(hall, formattedDate, slotParts[0], slotParts[1]);
-      },
-    });
-  }
+    try {
+      // Show loading indicator
+      _showSnackBar('Blocking slot...', isError: false);
 
+      // First, block the slot with 'b' status
+      await ref.read(hallBookingProvider.notifier).postBooking(
+        hallId: hall.hallId!,
+        bookingId: null,
+        date: formattedDate,
+        slotFromTime: slotParts[0],
+        slotToTime: slotParts[1],
+        isPaid: 'b', // Block the slot
+      );
+
+      // Update local booking status to reflect the blocked state
+      final bookingKey = _getBookingKey(hall.hallId ?? 0, formattedDate, slotParts[0], slotParts[1]);
+      setState(() {
+        bookingStatuses[bookingKey] = BookingStatus.blocked;
+      });
+
+      // Navigate to payment screen
+      Navigator.pushNamed(context, '/payment', arguments: {
+        'hallId': hall.hallId,
+        'date': formattedDate,
+        'slotFromTime': slotParts[0],
+        'slotToTime': slotParts[1],
+        'hallName': hall.name,
+        'price': hall.price,
+        'onPaymentSuccess': (bool success) {
+          if (success) {
+            _handlePaymentSuccess(hall, formattedDate, slotParts[0], slotParts[1]);
+          } else {
+            // If payment fails, you might want to cancel/unblock the slot
+            _handlePaymentFailure(hall, formattedDate, slotParts[0], slotParts[1]);
+          }
+        },
+      });
+    } catch (e) {
+      _showSnackBar('Failed to block slot: ${e.toString()}', isError: true);
+    }
+  }
+  void _handlePaymentFailure(Hall hall, String date, String fromTime, String toTime) async {
+    final bookingKey = _getBookingKey(hall.hallId ?? 0, date, fromTime, toTime);
+
+    try {
+      final authState = ref.read(authprovider);
+      final response = await http.get(
+        Uri.parse(Bbapi.hallbooking),
+        headers: {'Authorization': 'Bearer ${authState.token}', 'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode != 200) throw Exception("Failed to retrieve booking data");
+
+      final List bookings = jsonDecode(response.body)['data'];
+      int? bookingId;
+
+      for (var booking in bookings) {
+        if (booking['hall_id'] == hall.hallId &&
+            booking['user_id'] == authState.userId &&
+            booking['date'] == date &&
+            booking['slot_from_time'] == fromTime &&
+            booking['slot_to_time'] == toTime &&
+            booking['is_paid'] == 'b') { // Find the blocked booking
+          bookingId = booking['id'];
+          break;
+        }
+      }
+
+      if (bookingId != null) {
+        // Cancel the booking (or you could update to 'n' for failed payment)
+        await ref.read(hallBookingProvider.notifier).cancelBooking(bookingId: bookingId);
+
+        // Update local state to available
+        setState(() => bookingStatuses[bookingKey] = BookingStatus.available);
+
+        _showSnackBar('Slot has been released due to payment failure', isError: false);
+      }
+
+      _loadExistingBookings(); // Refresh the booking data
+    } catch (e) {
+      if (context.mounted) _showSnackBar('Failed to handle payment failure: ${e.toString()}', isError: true);
+    }
+  }
   void _handlePaymentSuccess(Hall hall, String date, String fromTime, String toTime) async {
     final bookingKey = _getBookingKey(hall.hallId ?? 0, date, fromTime, toTime);
 
@@ -172,17 +253,18 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
             booking['date'] == date &&
             booking['slot_from_time'] == fromTime &&
             booking['slot_to_time'] == toTime &&
-            booking['is_paid'] == bookingStatusToString(BookingStatus.blocked)) {
+            booking['is_paid'] == 'b') { // Find the blocked booking
           bookingId = booking['id'];
           break;
         }
       }
 
-      if (bookingId == null) throw Exception("Booking not found for payment update.");
+      if (bookingId == null) throw Exception("Blocked booking not found for payment update.");
 
+      // Update the booking status from 'b' (blocked) to 'c' (confirmed)
       await ref.read(hallBookingProvider.notifier).updateBookingPaymentStatus(
         bookingId: bookingId,
-        status: bookingStatusToString(BookingStatus.confirmed),
+        status: 'c', // Changed from bookingStatusToString(BookingStatus.confirmed) to 'c'
       );
 
       setState(() => bookingStatuses[bookingKey] = BookingStatus.confirmed);
@@ -193,7 +275,6 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
       if (context.mounted) _showSnackBar('Payment update failed: ${e.toString()}', isError: true);
     }
   }
-
   void _showDialog() {
     showDialog(
       context: context,
@@ -461,6 +542,7 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
     final args = ModalRoute.of(context)?.settings.arguments as Map;
     final Data property = args['property'];
     final halls = property.halls ?? [];
+    final authState = ref.read(authprovider);
 
     if (halls.isEmpty) {
       return Scaffold(
@@ -556,6 +638,8 @@ class _StepByStepHallBookingScreenState extends ConsumerState<StepByStepHallBook
                     selectedDay: selectedDay,
                     selectedSlot: selectedSlot,
                     bookingStatuses: bookingStatuses,
+                    bookingUserIds: bookingUserIds, // Add this line
+                    currentUserId: authState.userId, // Add this line
                     onSlotSelected: (slot) => setState(() => selectedSlot = slot),
                   ),
                 ),

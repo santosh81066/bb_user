@@ -9,7 +9,7 @@ import '../Providers/get_review_provider.dart';
 import '../Providers/subscribed_provider.dart';
 import '../Providers/venues_provider.dart';
 import '../models/get_properties_model.dart';
-import '../models/get_review_model.dart';
+
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});

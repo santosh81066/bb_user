@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../Screens/firebase.dart';
+import 'firebase.dart';
 
 // Wallet state model
 class WalletState {

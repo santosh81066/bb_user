@@ -10,6 +10,8 @@ class Slotselection extends StatefulWidget {
   final String? selectedSlot;
   final Function(String) onSlotSelected;
   final Map<String, BookingStatus> bookingStatuses;
+  final Map<String, int> bookingUserIds; // Add this to track user IDs for blocked slots
+  final int? currentUserId; // Add current user ID
 
   const Slotselection({
     super.key,
@@ -18,6 +20,8 @@ class Slotselection extends StatefulWidget {
     this.selectedSlot,
     required this.onSlotSelected,
     required this.bookingStatuses,
+    required this.bookingUserIds,
+    required this.currentUserId,
   });
 
   @override
@@ -151,15 +155,22 @@ class _SlotselectionState extends State<Slotselection> with SingleTickerProvider
         final bookingKey = _getBookingKey(widget.hall.hallId ?? 0, formattedDate,
             slot.slotFromTime ?? '', slot.slotToTime ?? '');
         final bookingStatus = widget.bookingStatuses[bookingKey];
+        final bookingUserId = widget.bookingUserIds[bookingKey];
 
         final isDisabled = (isToday && slotFromTime.isBefore(now)) ||
             bookingStatus == BookingStatus.confirmed;
         final isSelected = widget.selectedSlot == slotDisplay;
 
+        // Check if slot is blocked by current user
+        final isBlockedByCurrentUser = bookingStatus == BookingStatus.blocked &&
+            bookingUserId != null &&
+            widget.currentUserId != null &&
+            bookingUserId == widget.currentUserId;
+
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           margin: const EdgeInsets.only(bottom: 12),
-          child: _buildTimeSlotCard(slotDisplay, bookingStatus, isDisabled, isSelected),
+          child: _buildTimeSlotCard(slotDisplay, bookingStatus, isDisabled, isSelected, isBlockedByCurrentUser),
         );
       }).toList(),
     );
@@ -174,8 +185,8 @@ class _SlotselectionState extends State<Slotselection> with SingleTickerProvider
     child: Icon(icon, color: backgroundColor != null ? Colors.white : Colors.deepPurple, size: 24),
   );
 
-  Widget _buildTimeSlotCard(String slotDisplay, BookingStatus? bookingStatus, bool isDisabled, bool isSelected) {
-    final (cardColor, textColor, statusIcon) = _getSlotCardColors(isDisabled, isSelected);
+  Widget _buildTimeSlotCard(String slotDisplay, BookingStatus? bookingStatus, bool isDisabled, bool isSelected, bool isBlockedByCurrentUser) {
+    final (cardColor, textColor, statusIcon) = _getSlotCardColors(isDisabled, isSelected, bookingStatus, isBlockedByCurrentUser);
 
     return GestureDetector(
       onTap: isDisabled ? null : () => widget.onSlotSelected(slotDisplay),
@@ -206,7 +217,7 @@ class _SlotselectionState extends State<Slotselection> with SingleTickerProvider
                 children: [
                   Text(slotDisplay, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 4),
-                  Text(_getSlotStatusMessage(bookingStatus, isDisabled),
+                  Text(_getSlotStatusMessage(bookingStatus, isDisabled, isBlockedByCurrentUser),
                       style: TextStyle(color: isSelected ? Colors.white70 : textColor.withOpacity(0.7), fontSize: 12)),
                 ],
               ),
@@ -227,19 +238,33 @@ class _SlotselectionState extends State<Slotselection> with SingleTickerProvider
     );
   }
 
-  (Color, Color, IconData) _getSlotCardColors(bool isDisabled, bool isSelected) {
+  (Color, Color, IconData) _getSlotCardColors(bool isDisabled, bool isSelected, BookingStatus? status, bool isBlockedByCurrentUser) {
     if (isDisabled) return (Colors.red.shade100, Colors.red.shade700, Icons.block);
     if (isSelected) return (Colors.deepPurple, Colors.white, Icons.check_circle);
+
+    // Handle blocked status with different colors for current user vs other users
+    if (status == BookingStatus.blocked) {
+      if (isBlockedByCurrentUser) {
+        return (Colors.orange.shade100, Colors.orange.shade700, Icons.timer); // Orange for user's own blocked slot
+      } else {
+        return (Colors.yellow.shade100, Colors.yellow.shade700, Icons.hourglass_empty); // Yellow for other user's blocked slot
+      }
+    }
+
     return (Colors.green.shade50, Colors.green.shade700, Icons.access_time);
   }
 
-  String _getSlotStatusMessage(BookingStatus? status, bool isDisabled) {
+  String _getSlotStatusMessage(BookingStatus? status, bool isDisabled, bool isBlockedByCurrentUser) {
     if (isDisabled) return 'Not Available';
+
     return switch (status) {
       BookingStatus.confirmed => 'Already Booked',
-      BookingStatus.blocked => 'Blocked by other users',
+      BookingStatus.blocked => isBlockedByCurrentUser
+          ? 'You have already blocked - Make payment'
+          : 'Blocked by other user - Make payment to make it yours',
       BookingStatus.available => 'Available for booking',
       _ => 'Available for booking',
     };
   }
+
 }

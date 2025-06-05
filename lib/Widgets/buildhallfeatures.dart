@@ -77,9 +77,10 @@ class _EnhancedHallFeaturesState extends State<EnhancedHallFeatures> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(context),
-        _buildLocationWidget(context),
         SizedBox(height: _getResponsivePadding(context)),
         _buildTabNavigation(context),
+        SizedBox(height: _getResponsivePadding(context)),
+        _buildLocationWidget(context),
         SizedBox(height: _getResponsivePadding(context)),
         _buildContentPages(context),
       ],
@@ -92,7 +93,6 @@ class _EnhancedHallFeaturesState extends State<EnhancedHallFeatures> {
     final subtitleSize = _getResponsiveFontSize(context, 14);
 
     return Container(
-      margin: EdgeInsets.all(padding),
       padding: EdgeInsets.symmetric(
         vertical: _isSmallScreen(context) ? 16 : 20,
         horizontal: _isSmallScreen(context) ? 16 : 24,
@@ -141,7 +141,7 @@ class _EnhancedHallFeaturesState extends State<EnhancedHallFeatures> {
     final fontSize = _getResponsiveFontSize(context, 10);
 
     return Container(
-
+      padding: EdgeInsets.all(_isSmallScreen(context) ? 8 : 12),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(15),
@@ -182,7 +182,7 @@ class _EnhancedHallFeaturesState extends State<EnhancedHallFeatures> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: isSelected ? Colors.white : Colors.grey.shade600, size: _isSmallScreen(context) ? 16 : 18),
+              Icon(icon, color: isSelected ? Colors.white : Colors.deepPurple, size: _isSmallScreen(context) ? 18 : 20),
               const SizedBox(height: 2),
               Text(title, style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, fontSize: fontSize)),
             ],

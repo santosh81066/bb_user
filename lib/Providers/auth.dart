@@ -456,98 +456,267 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith();
   }
 
+// DEBUGGED VERSION OF loginmail METHOD
+
   Future<void> loginmail(BuildContext context, String? username,
       String? password, WidgetRef ref) async {
     const url = Bbapi.login_mail;
     final prefs = await SharedPreferences.getInstance();
     final loadingState = ref.read(loadingProvider2.notifier);
+
+    // Add input validation
+    if (username == null || username.isEmpty || password == null || password.isEmpty) {
+      _showErrorDialog(context, 'Invalid Input', 'Please enter both email and password');
+      return;
+    }
+
     loadingState.state = true;
 
-    var response = await http.post(Uri.parse(url),
+    try {
+      var response = await http.post(
+        Uri.parse(url),
         headers: {
-          'Content-Type':
-          'application/json', // Set the content type to application/json
+          'Content-Type': 'application/json',
         },
         body: json.encode({
-          "email": username!,
-          "password": password!,
-        }));
+          "email": username,
+          "password": password,
+        }),
+      );
 
-    var userDetails = json.decode(response.body);
-    switch (response.statusCode) {
-      case 200:
+      // Debug: Print response for troubleshooting
+      print("Login response status: ${response.statusCode}");
+      print("Login response body: ${response.body}");
+
+      // Check if response body is empty
+      if (response.body.isEmpty) {
         loadingState.state = false;
-        // Extract data from the 'data' key in the response
-        final userDataFromServer = userDetails['data'];
-        state = state.copyWith(
-          userId: userDataFromServer["user_id"] as int?, // Cast to int
-          token: userDataFromServer["access_token"] as String?,
-          username: userDataFromServer["username"] as String?,
-          email: userDataFromServer["email"] as String?,
-          mobileno: userDataFromServer["mobile_no"].toString(), // Force String
-          usertype: userDataFromServer["user_role"] as String?,
-          profilePic: userDataFromServer["profile_pic"] as String?, // Added profile_pic
-        );
+        _showErrorDialog(context, 'Server Error', 'Empty response from server');
+        return;
+      }
 
-        final userData = json.encode({
-          'user_id': state.userId,
-          'access_token': state.token,
-          'username': state.username,
-          'email': state.email,
-          'mobile_no': state.mobileno,
-          'user_role': state.usertype,
-          'profile_pic': state.profilePic, // Added profile_pic to storage
-        });
-        await prefs.setString('userData', userData);
-
-        print("Email login successful - profilePic: ${state.profilePic}");
-        Navigator.of(context).pushNamed('/welcome');
-        break;
-      case 400:
+      // Parse response with error handling
+      Map<String, dynamic> userDetails;
+      try {
+        userDetails = json.decode(response.body) as Map<String, dynamic>;
+      } catch (e) {
         loadingState.state = false;
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Error'),
-              content: Text(cleanErrorMessage(userDetails)),
-              //content: Text("$userDetails"),
-              actions: [
-                ElevatedButton(
-                  child: const Text('OK'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
+        print("JSON decode error: $e");
+        _showErrorDialog(context, 'Parse Error', 'Invalid response format from server');
+        return;
+      }
 
-        break;
-      case 500:
-        loadingState.state = false;
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Error'),
-              content: Text(cleanErrorMessage(userDetails)),
-              //content: Text("$userDetails"),
-              actions: [
-                ElevatedButton(
-                  child: const Text('OK'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-        break;
+      switch (response.statusCode) {
+        case 200:
+          loadingState.state = false;
+
+          // Validate response structure
+          if (userDetails['data'] == null) {
+            _showErrorDialog(context, 'Invalid Response', 'Missing user data in server response');
+            return;
+          }
+
+          final userDataFromServer = userDetails['data'] as Map<String, dynamic>;
+
+          // Validate required fields exist
+          if (userDataFromServer["user_id"] == null ||
+              userDataFromServer["access_token"] == null) {
+            _showErrorDialog(context, 'Invalid Response', 'Missing required user information');
+            return;
+          }
+
+          // Update state with null safety
+          state = state.copyWith(
+            userId: userDataFromServer["user_id"] as int?,
+            token: userDataFromServer["access_token"] as String?,
+            username: userDataFromServer["username"] as String?,
+            email: userDataFromServer["email"] as String?,
+            mobileno: userDataFromServer["mobile_no"]?.toString() ?? '',
+            usertype: userDataFromServer["user_role"] as String?,
+            profilePic: userDataFromServer["profile_pic"] as String?,
+          );
+
+          // Save user data with error handling
+          try {
+            final userData = json.encode({
+              'user_id': state.userId,
+              'access_token': state.token,
+              'username': state.username,
+              'email': state.email,
+              'mobile_no': state.mobileno,
+              'user_role': state.usertype,
+              'profile_pic': state.profilePic,
+            });
+            await prefs.setString('userData', userData);
+
+            print("Email login successful - profilePic: ${state.profilePic}");
+
+            // Check if context is still valid before navigation
+            if (context.mounted) {
+              Navigator.of(context).pushNamed('/welcome');
+            }
+          } catch (e) {
+            print("Error saving user data: $e");
+            _showErrorDialog(context, 'Storage Error', 'Failed to save login data');
+          }
+          break;
+
+        case 400:
+          loadingState.state = false;
+          _showErrorDialog(context, 'Login Failed', userDetails);
+          break;
+
+
+// FIXED 401 ERROR CASE - USER FRIENDLY VERSION
+
+        case 401:
+          loadingState.state = false;
+          _showErrorDialog(
+              context,
+              'Login Failed',
+              'The email or password you entered is incorrect. Please check your credentials and try again.'
+          );
+          break;
+
+
+        case 403:
+          loadingState.state = false;
+          _showErrorDialog(context, 'Access Denied', 'Account may be suspended or deactivated');
+          break;
+
+        case 500:
+          loadingState.state = false;
+          _showErrorDialog(context, 'Server Error', 'Internal server error. Please try again later.');
+          break;
+
+        case 504:
+          loadingState.state = false;
+          _showErrorDialog(context, 'Service Unavailable', 'Server is temporarily unavailable. Please try again later.');
+          break;
+
+        default:
+          loadingState.state = false;
+          _showErrorDialog(context, 'Unexpected Error', 'An unexpected error occurred (${response.statusCode})');
+          break;
+      }
+
+    } catch (e) {
+      // Handle network errors, timeouts, etc.
+      loadingState.state = false;
+      print("Network error in loginmail: $e");
+
+      String errorMessage;
+      if (e.toString().contains('SocketException') || e.toString().contains('NetworkException')) {
+        errorMessage = 'No internet connection. Please check your network and try again.';
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Request timed out. Please try again.';
+      } else {
+        errorMessage = 'Network error occurred. Please try again.';
+      }
+
+      _showErrorDialog(context, 'Connection Error', errorMessage);
     }
-    // Handle other status codes as needed
+  }
+
+// HELPER METHODS (Add these to your AuthNotifier class)
+
+// Reusable error dialog method
+  void _showErrorDialog(BuildContext context, String title, dynamic errorData) {
+    String errorMessage = _extractErrorMessage(errorData);
+
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red, size: 24),
+                SizedBox(width: 8),
+                Expanded(child: Text(title)),
+              ],
+            ),
+            content: Text(errorMessage),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+// Extract error message from different response formats
+  String _extractErrorMessage(dynamic errorData) {
+    if (errorData == null) return "Unknown error occurred";
+
+    if (errorData is String) {
+      return cleanErrorMessage(errorData);
+    }
+
+    if (errorData is Map<String, dynamic>) {
+      // Check for common error message keys
+      if (errorData.containsKey('message')) {
+        return cleanErrorMessage(errorData['message'].toString());
+      } else if (errorData.containsKey('error')) {
+        return cleanErrorMessage(errorData['error'].toString());
+      } else if (errorData.containsKey('detail')) {
+        return cleanErrorMessage(errorData['detail'].toString());
+      } else if (errorData.containsKey('non_field_errors')) {
+        // Django REST framework format
+        var errors = errorData['non_field_errors'];
+        if (errors is List && errors.isNotEmpty) {
+          return cleanErrorMessage(errors.first.toString());
+        }
+      } else {
+        // If no specific error key, clean the entire response
+        return cleanErrorMessage(errorData.toString());
+      }
+    }
+
+    return cleanErrorMessage(errorData.toString());
+  }
+
+// IMPROVED cleanErrorMessage function
+  String cleanErrorMessage(String errorMessage) {
+    if (errorMessage.isEmpty) return "Unknown error";
+
+    String cleanedMessage = errorMessage;
+
+    // Remove common prefixes
+    cleanedMessage = cleanedMessage.replaceAll(RegExp(r'^(ERROR|Error|FAILED|Failed):\s*', caseSensitive: false), '');
+
+    // Remove JSON brackets and quotes
+    cleanedMessage = cleanedMessage.replaceAll(RegExp(r'[{}""\[\]]'), '');
+
+    // Clean up key-value pairs (e.g., "key: value" -> "value")
+    cleanedMessage = cleanedMessage.replaceAll(RegExp(r'\w+:\s*'), '');
+
+    // Remove extra whitespace and newlines
+    cleanedMessage = cleanedMessage.replaceAll(RegExp(r'\s+'), ' ');
+    cleanedMessage = cleanedMessage.trim();
+
+    // Capitalize first letter
+    if (cleanedMessage.isNotEmpty) {
+      cleanedMessage = cleanedMessage[0].toUpperCase() + cleanedMessage.substring(1);
+    }
+
+    // If still empty after cleaning, provide default message
+    if (cleanedMessage.isEmpty) {
+      return "An error occurred while processing your request";
+    }
+
+    return cleanedMessage;
   }
 
   // New method to fetch user list (based on your Postman response)

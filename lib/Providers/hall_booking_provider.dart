@@ -1,4 +1,4 @@
-// hall_booking_provider.dart
+// hall_booking_provider.dart - FIXED VERSION
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -43,7 +43,7 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
         'Content-Type': 'application/json',
       };
 
-      // Check if this user already blocked/confirmed this slot
+      // Get all existing bookings for this slot
       final getResponse = await http.get(
         Uri.parse(Bbapi.hallbooking),
         headers: headers,
@@ -55,18 +55,34 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
 
       final bookings = jsonDecode(getResponse.body)['data'] as List;
       int? existingBookingId;
+      bool slotAlreadyConfirmed = false;
 
+      // Check for existing bookings in this slot
       for (var booking in bookings) {
-        if (booking['user_id'] == userId &&
-            booking['hall_id'] == hallId &&
+        if (booking['hall_id'] == hallId &&
             booking['date'] == date &&
             booking['slot_from_time'] == slotFromTime &&
             booking['slot_to_time'] == slotToTime) {
-          existingBookingId = booking['id'];
-          break;
+
+          // Check if any user has already confirmed this slot
+          if (booking['is_paid'] == 'y') {
+            slotAlreadyConfirmed = true;
+            break;
+          }
+
+          // Check if current user has existing booking for this slot
+          if (booking['user_id'] == userId) {
+            existingBookingId = booking['id'];
+          }
         }
       }
 
+      // Prevent booking if slot is already confirmed by someone else
+      if (slotAlreadyConfirmed) {
+        throw Exception('This slot has already been confirmed by another user');
+      }
+
+      // If current user has existing booking or bookingId is provided, update it
       if (existingBookingId != null || bookingId != null) {
         await updateBookingPaymentStatus(
           bookingId: existingBookingId ?? bookingId!,
@@ -75,6 +91,7 @@ class HallBookingNotifier extends StateNotifier<AsyncValue<void>> {
         return;
       }
 
+      // Create new booking
       final requestBody = {
         "hall_id": hallId,
         "user_id": userId,

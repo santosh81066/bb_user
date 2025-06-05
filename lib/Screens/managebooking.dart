@@ -1,7 +1,6 @@
-import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../Colors/coustcolors.dart';
 import '../Providers/get_hall_booking_provider.dart';
 import '../Providers/hall_booking_provider.dart';
 import '../Providers/venues_provider.dart';
@@ -84,8 +83,9 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
   // Check if a booking is completed (past date)
   bool isCompletedBooking(GetHallBooking booking) {
-    if (booking.slotToTime.isEmpty || !booking.slotToTime.contains(':'))
+    if (booking.slotToTime.isEmpty || !booking.slotToTime.contains(':')) {
       return false;
+    }
 
     final endParts = booking.slotToTime.split(':');
     if (endParts.length < 2) return false;
@@ -233,12 +233,12 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [Color(0xFF6418C3), Color(0xFF7A30E0)],
                 ),
-                borderRadius: BorderRadius.only(
+                borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(20),
                   bottomRight: Radius.circular(20),
                 ),
@@ -246,7 +246,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
                     blurRadius: 10,
-                    offset: Offset(0, 5),
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
@@ -261,7 +261,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                           children: [
                             Container(
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.black26.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                              /* child: IconButton(
@@ -270,8 +270,8 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                 onPressed: () => Navigator.of(context).pop(),
                               ),*/
                             ),
-                            SizedBox(width: 16),
-                            Text(
+                            const SizedBox(width: 16),
+                            const Text(
                               "My Bookings",
                               style: TextStyle(
                                 color: Colors.white,
@@ -281,19 +281,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                             ),
                           ],
                         ),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: IconButton(
-                            icon: Icon(Icons.notifications_outlined,
-                                color: Colors.white),
-                            onPressed: () {
-                              // Notification action
-                            },
-                          ),
-                        ),
+
                       ],
                     ),
                   ),
@@ -309,15 +297,15 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                           BoxShadow(
                             color: Colors.black.withOpacity(0.05),
                             blurRadius: 10,
-                            offset: Offset(0, 5),
+                            offset: const Offset(0, 5),
                           ),
                         ],
                       ),
-                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
                         children: [
                           Icon(Icons.search, color: Colors.grey[400]),
-                          SizedBox(width: 10),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: TextField(
                               controller: searchController,
@@ -333,7 +321,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                   fontSize: 15,
                                 ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
+                                contentPadding: const EdgeInsets.symmetric(
                                     vertical: 14),
                               ),
                             ),
@@ -358,7 +346,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
             // Tab Bar
             Container(
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(15),
@@ -366,7 +354,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
-                    offset: Offset(0, 2),
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -391,7 +379,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
               child: RefreshIndicator(
                 key: _refreshKey,
                 onRefresh: _loadData,
-                color: Color(0xFF6418C3),
+                color: const Color(0xFF6418C3),
                 child: bookingsAsyncValue.when(
                   data: (bookings) {
                     final filteredBookings = filterBookings(
@@ -418,11 +406,11 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CircularProgressIndicator(
+                            const CircularProgressIndicator(
                               valueColor: AlwaysStoppedAnimation<Color>(
                                   Color(0xFF6418C3)),
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             Text(
                               'Loading your bookings...',
                               style: TextStyle(
@@ -468,7 +456,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
             icon,
             size: isSmallScreen ? 16 : 18,
           ),
-          SizedBox(height: 2),
+          const SizedBox(height: 2),
           Text(
             text,
             style: TextStyle(
@@ -523,18 +511,18 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Color(0xFF6418C3).withOpacity(0.1),
+                    color: const Color(0xFF6418C3).withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     iconData,
                     size: 48,
-                    color: Color(0xFF6418C3),
+                    color: const Color(0xFF6418C3),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Text(
                   message,
                   style: TextStyle(
@@ -543,7 +531,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                     color: Colors.grey[800],
                   ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   'Pull down to refresh or tap the button below',
                   style: TextStyle(
@@ -551,27 +539,27 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                     color: Colors.grey[600],
                   ),
                 ),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
                     if (tabIndex == 0 || tabIndex == 1) {
                       // Navigate to booking creation
-                      Navigator.of(context).pushNamed('/create-booking');
+                      Navigator.of(context).pushNamed('/welcome');
                     } else {
                       // Refresh to check for completed bookings
                       _refreshKey.currentState?.show();
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF6418C3),
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    backgroundColor: const Color(0xFF6418C3),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
                   child: Text(
                     actionText,
-                    style: TextStyle(color: Colors.white),
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ],
@@ -590,7 +578,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.red[50],
                 shape: BoxShape.circle,
@@ -601,7 +589,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                 color: Colors.red[400],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             Text(
               'Oops! Something went wrong',
               style: TextStyle(
@@ -610,7 +598,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                 color: Colors.grey[800],
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'We couldn\'t load your bookings',
               textAlign: TextAlign.center,
@@ -619,14 +607,14 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                 color: Colors.grey[600],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadData,
-              icon: Icon(Icons.refresh, color: Colors.white),
-              label: Text('Try Again', style: TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.refresh, color: Colors.white),
+              label: const Text('Try Again', style: TextStyle(color: Colors.white)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF6418C3),
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                backgroundColor: const Color(0xFF6418C3),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
@@ -643,27 +631,49 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
     Color statusColor;
     IconData statusIcon;
     String statusText;
+    Color headerGradientStart;
+    Color headerGradientEnd;
 
     if (isCanceledBooking(booking)) {
       statusColor = Colors.red;
       statusIcon = Icons.cancel;
       statusText = 'Canceled';
+      headerGradientStart = Colors.red.withOpacity(0.8);
+      headerGradientEnd = Colors.red.shade700.withOpacity(0.8);
+    } else if (booking.isPaid == 'b') { // Blocked booking
+      statusColor = Colors.orange;
+      statusIcon = Icons.block;
+      statusText = 'Blocked';
+      headerGradientStart = Colors.orange.withOpacity(0.8);
+      headerGradientEnd = Colors.orange.shade700.withOpacity(0.8);
+    } else if (booking.isPaid == 'c') { // Confirmed booking
+      statusColor = Colors.green;
+      statusIcon = Icons.check_circle_outline;
+      statusText = 'Confirmed';
+      headerGradientStart = Colors.green.withOpacity(0.8);
+      headerGradientEnd = Colors.green.shade700.withOpacity(0.8);
     } else if (isCompleted) {
       statusColor = Colors.green;
       statusIcon = Icons.check_circle;
       statusText = 'Completed';
+      headerGradientStart = const Color(0xFF6418C3).withOpacity(0.8);
+      headerGradientEnd = const Color(0xFF7A30E0).withOpacity(0.8);
     } else if (isUpcomingBooking(booking)) {
-      statusColor = Colors.blue;
+      statusColor = Colors.green;
       statusIcon = Icons.upcoming;
       statusText = 'Upcoming';
+      headerGradientStart = const Color(0xFF6418C3).withOpacity(0.8);
+      headerGradientEnd = const Color(0xFF7A30E0).withOpacity(0.8);
     } else {
       statusColor = Colors.amber;
       statusIcon = Icons.pending;
       statusText = 'Active';
+      headerGradientStart = const Color(0xFF6418C3).withOpacity(0.8);
+      headerGradientEnd = const Color(0xFF7A30E0).withOpacity(0.8);
     }
 
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -671,7 +681,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -683,28 +693,26 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: isCanceledBooking(booking)
-                    ? [Colors.red.withOpacity(0.8), Colors.red.shade700.withOpacity(0.8)]
-                    : [Color(0xFF6418C3).withOpacity(0.8), Color(0xFF7A30E0).withOpacity(0.8)],
+                colors: [headerGradientStart, headerGradientEnd],
               ),
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
               ),
             ),
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.location_on,
                   color: Colors.white,
                   size: 18,
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     booking.propertyName ?? 'Unknown Property',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                       color: Colors.white,
@@ -714,7 +722,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                   ),
                 ),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(30),
@@ -727,10 +735,10 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                         size: 14,
                         color: Colors.white,
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
                         statusText,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
@@ -754,10 +762,13 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                   children: [
                     Icon(
                       Icons.meeting_room,
-                      color: isCanceledBooking(booking) ? Colors.red : Color(0xFF6418C3),
+                      color: isCanceledBooking(booking) ? Colors.red :
+                      booking.isPaid == 'b' ? Colors.orange :
+                      booking.isPaid == 'c' ? Colors.green :
+                      const Color(0xFF6418C3),
                       size: 18,
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Text(
                       'Hall:',
                       style: TextStyle(
@@ -765,11 +776,11 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                         color: Colors.grey[600],
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         booking.hallName ?? 'Unknown Hall',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -777,17 +788,20 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                     ),
                   ],
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
                 // Date info
                 Row(
                   children: [
                     Icon(
                       Icons.calendar_today,
-                      color: isCanceledBooking(booking) ? Colors.red : Color(0xFF6418C3),
+                      color: isCanceledBooking(booking) ? Colors.red :
+                      booking.isPaid == 'b' ? Colors.orange :
+                      booking.isPaid == 'c' ? Colors.green :
+                      const Color(0xFF6418C3),
                       size: 18,
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Text(
                       'Date:',
                       style: TextStyle(
@@ -795,27 +809,30 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                         color: Colors.grey[600],
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text(
                       formatDate(booking.date),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
 
                 // Time info
                 Row(
                   children: [
                     Icon(
                       Icons.access_time,
-                      color: isCanceledBooking(booking) ? Colors.red : Color(0xFF6418C3),
+                      color: isCanceledBooking(booking) ? Colors.red :
+                      booking.isPaid == 'b' ? Colors.orange :
+                      booking.isPaid == 'c' ? Colors.green :
+                      const Color(0xFF6418C3),
                       size: 18,
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Text(
                       'Time:',
                       style: TextStyle(
@@ -823,10 +840,10 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                         color: Colors.grey[600],
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text(
                       '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -834,9 +851,9 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                   ],
                 ),
 
-                SizedBox(height: 16),
-                Divider(),
-                SizedBox(height: 8),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
 
                 // Actions - different actions based on booking status
                 Row(
@@ -849,12 +866,12 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                           showDialog(
                             context: context,
                             builder: (context) => AlertDialog(
-                              title: Text('Cancel Booking'),
-                              content: Text('Are you sure you want to cancel this booking?'),
+                              title: const Text('Cancel Booking'),
+                              content: const Text('Are you sure you want to cancel this booking?'),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),
-                                  child: Text('No'),
+                                  child: const Text('No'),
                                 ),
                                 TextButton(
                                   onPressed: () async {
@@ -863,7 +880,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
                                     // Show loading indicator
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
+                                      const SnackBar(
                                         content: Row(
                                           children: [
                                             SizedBox(
@@ -895,7 +912,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                       if (success) {
                                         // Show success message
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
+                                          const SnackBar(
                                             content: Text('Booking cancelled successfully'),
                                             behavior: SnackBarBehavior.floating,
                                             backgroundColor: Colors.green,
@@ -907,7 +924,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                       } else {
                                         // Show error message
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
+                                          const SnackBar(
                                             content: Text('Failed to cancel booking. Please try again.'),
                                             behavior: SnackBarBehavior.floating,
                                             backgroundColor: Colors.red,
@@ -928,7 +945,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                       );
                                     }
                                   },
-                                  child: Text(
+                                  child: const Text(
                                     'Yes, Cancel',
                                     style: TextStyle(color: Colors.red),
                                   ),
@@ -937,8 +954,8 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                             ),
                           );
                         },
-                        icon: Icon(Icons.cancel_outlined, color: Colors.red),
-                        label: Text('Cancel', style: TextStyle(color: Colors.red)),
+                        icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                        label: const Text('Cancel', style: TextStyle(color: Colors.red)),
                       )
                     else if (isCompleted && !isCanceledBooking(booking))
                       TextButton.icon(
@@ -946,35 +963,35 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                           // Show review options
                           showModalBottomSheet(
                             context: context,
-                            shape: RoundedRectangleBorder(
+                            shape: const RoundedRectangleBorder(
                               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                             ),
                             builder: (context) => Padding(
-                              padding: EdgeInsets.all(24),
+                              padding: const EdgeInsets.all(24),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
+                                  const Text(
                                     'Add Review',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  SizedBox(height: 20),
+                                  const SizedBox(height: 20),
                                   ListTile(
-                                    leading: Icon(Icons.home, color: Color(0xFF6418C3)),
-                                    title: Text('Review Property'),
+                                    leading: const Icon(Icons.home, color: Color(0xFF6418C3)),
+                                    title: const Text('Review Property'),
                                     subtitle: Text(booking.propertyName ?? 'Unknown Property'),
                                     onTap: () {
                                       Navigator.pop(context);
                                       _navigateToReview('property', booking);
                                     },
                                   ),
-                                  Divider(),
+                                  const Divider(),
                                   ListTile(
-                                    leading: Icon(Icons.meeting_room, color: Color(0xFF6418C3)),
-                                    title: Text('Review Hall'),
+                                    leading: const Icon(Icons.meeting_room, color: Color(0xFF6418C3)),
+                                    title: const Text('Review Hall'),
                                     subtitle: Text(booking.hallName ?? 'Unknown Hall'),
                                     onTap: () {
                                       Navigator.pop(context);
@@ -986,11 +1003,11 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                             ),
                           );
                         },
-                        icon: Icon(Icons.rate_review_outlined, color: Color(0xFF6418C3)),
-                        label: Text('Review', style: TextStyle(color: Color(0xFF6418C3))),
+                        icon: const Icon(Icons.rate_review_outlined, color: Color(0xFF6418C3)),
+                        label: const Text('Review', style: TextStyle(color: Color(0xFF6418C3))),
                       )
                     else if (isCanceledBooking(booking))
-                        Text(
+                        const Text(
                           'Booking Canceled',
                           style: TextStyle(
                             color: Colors.red,
@@ -1000,10 +1017,13 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
                     ElevatedButton.icon(
                       onPressed: () => _showBookingDetails(context, booking),
-                      icon: Icon(Icons.visibility, color: Colors.white),
-                      label: Text('View Details', style: TextStyle(color: Colors.white)),
+                      icon: const Icon(Icons.visibility, color: Colors.white),
+                      label: const Text('View Details', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isCanceledBooking(booking) ? Colors.red : Color(0xFF6418C3),
+                        backgroundColor: isCanceledBooking(booking) ? Colors.red :
+                        booking.isPaid == 'b' ? Colors.orange :
+                        booking.isPaid == 'c' ? Colors.green :
+                        const Color(0xFF6418C3),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
@@ -1018,7 +1038,6 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
       ),
     );
   }
-// Method to show booking details in a bottom sheet
   // Enhanced method to show booking details in a bottom sheet
   void _showBookingDetails(BuildContext context, GetHallBooking booking) {
     String _getBookingStatusFromIsPaid(String isPaid) {
@@ -1043,10 +1062,6 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
         case 'b':
           return Colors.orange;
         case 'c':
-          return Colors.blue;
-        case '0':
-          return Colors.grey;
-        case '1':
           return Colors.green;
         case 'cl':
           return Colors.red;
@@ -1078,7 +1093,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.85,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(25),
@@ -1089,7 +1104,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
           children: [
             // Handle bar
             Container(
-              margin: EdgeInsets.only(top: 12),
+              margin: const EdgeInsets.only(top: 12),
               width: 50,
               height: 5,
               decoration: BoxDecoration(
@@ -1100,22 +1115,22 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
 
             // Header with gradient background
             Container(
-              margin: EdgeInsets.all(20),
-              padding: EdgeInsets.all(20),
+              margin: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: isCanceledBooking(booking)
                       ? [Colors.red.shade400, Colors.red.shade600]
-                      : [Color(0xFF6418C3), Color(0xFF7A30E0)],
+                      : [const Color(0xFF6418C3), const Color(0xFF7A30E0)],
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: (isCanceledBooking(booking) ? Colors.red : Color(0xFF6418C3)).withOpacity(0.3),
+                    color: (isCanceledBooking(booking) ? Colors.red : const Color(0xFF6418C3)).withOpacity(0.3),
                     blurRadius: 15,
-                    offset: Offset(0, 8),
+                    offset: const Offset(0, 8),
                   ),
                 ],
               ),
@@ -1124,23 +1139,23 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(15),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.receipt_long,
                           color: Colors.white,
                           size: 24,
                         ),
                       ),
-                      SizedBox(width: 15),
+                      const SizedBox(width: 15),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            const Text(
                               'Booking Details',
                               style: TextStyle(
                                 color: Colors.white,
@@ -1148,7 +1163,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
                               'ID: #${booking.id}',
                               style: TextStyle(
@@ -1161,7 +1176,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                       ),
                       // Status badge
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(20),
@@ -1178,10 +1193,10 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                               size: 16,
                               color: Colors.white,
                             ),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Text(
                               _getBookingStatusFromIsPaid(booking.isPaid),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 12,
@@ -1199,7 +1214,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
             // Content
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
                     // Venue Information Card
@@ -1211,19 +1226,19 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                           icon: Icons.business,
                           label: 'Property',
                           value: booking.propertyName ?? 'Unknown Property',
-                          iconColor: Color(0xFF6418C3),
+                          iconColor: const Color(0xFF6418C3),
                         ),
                         Divider(height: 20, color: Colors.grey[200]),
                         _buildDetailItem(
                           icon: Icons.meeting_room,
                           label: 'Hall',
                           value: booking.hallName ?? 'Unknown Hall',
-                          iconColor: Color(0xFF6418C3),
+                          iconColor: const Color(0xFF6418C3),
                         ),
                       ],
                     ),
 
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
                     // Date & Time Information Card
                     _buildDetailCard(
@@ -1234,26 +1249,26 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                           icon: Icons.calendar_today,
                           label: 'Date',
                           value: formatDate(booking.date),
-                          iconColor: Color(0xFF6418C3),
+                          iconColor: const Color(0xFF6418C3),
                         ),
                         Divider(height: 20, color: Colors.grey[200]),
                         _buildDetailItem(
                           icon: Icons.access_time,
                           label: 'Time Slot',
                           value: '${formatTime(booking.slotFromTime)} - ${formatTime(booking.slotToTime)}',
-                          iconColor: Color(0xFF6418C3),
+                          iconColor: const Color(0xFF6418C3),
                         ),
                         Divider(height: 20, color: Colors.grey[200]),
                         _buildDetailItem(
                           icon: Icons.timelapse,
                           label: 'Duration',
                           value: _calculateDuration(booking.slotFromTime, booking.slotToTime),
-                          iconColor: Color(0xFF6418C3),
+                          iconColor: const Color(0xFF6418C3),
                         ),
                       ],
                     ),
 
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
                     // Booking Status Card
                     _buildDetailCard(
@@ -1261,7 +1276,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                       icon: _getStatusIcon(booking.isPaid),
                       children: [
                         Container(
-                          padding: EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: _getStatusColor(booking.isPaid).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
@@ -1273,7 +1288,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                           child: Row(
                             children: [
                               Container(
-                                padding: EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: _getStatusColor(booking.isPaid),
                                   borderRadius: BorderRadius.circular(8),
@@ -1284,7 +1299,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                   size: 20,
                                 ),
                               ),
-                              SizedBox(width: 12),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1297,7 +1312,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                         color: _getStatusColor(booking.isPaid),
                                       ),
                                     ),
-                                    SizedBox(height: 2),
+                                    const SizedBox(height: 2),
                                     Text(
                                       _getStatusDescription(booking.isPaid),
                                       style: TextStyle(
@@ -1314,7 +1329,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                       ],
                     ),
 
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
                     // Action Buttons
                     if (isCompletedBooking(booking) && !isCanceledBooking(booking))
@@ -1326,22 +1341,22 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                             // Show review options
                             showModalBottomSheet(
                               context: context,
-                              shape: RoundedRectangleBorder(
+                              shape: const RoundedRectangleBorder(
                                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                               ),
                               builder: (context) => Container(
-                                padding: EdgeInsets.all(24),
+                                padding: const EdgeInsets.all(24),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
+                                    const Text(
                                       'Add Your Review',
                                       style: TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    SizedBox(height: 20),
+                                    const SizedBox(height: 20),
                                     _buildReviewOption(
                                       icon: Icons.home,
                                       title: 'Review Property',
@@ -1351,7 +1366,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                                         _navigateToReview('property', booking);
                                       },
                                     ),
-                                    SizedBox(height: 12),
+                                    const SizedBox(height: 12),
                                     _buildReviewOption(
                                       icon: Icons.meeting_room,
                                       title: 'Review Hall',
@@ -1366,8 +1381,8 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                               ),
                             );
                           },
-                          icon: Icon(Icons.rate_review, color: Colors.white),
-                          label: Text(
+                          icon: const Icon(Icons.rate_review, color: Colors.white),
+                          label: const Text(
                             'Add Review',
                             style: TextStyle(
                               color: Colors.white,
@@ -1376,8 +1391,8 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF6418C3),
-                            padding: EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: const Color(0xFF6418C3),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
@@ -1386,7 +1401,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
                         ),
                       ),
 
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -1404,7 +1419,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
     required List<Widget> children,
   }) {
     return Container(
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1412,7 +1427,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(
@@ -1426,18 +1441,18 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(8),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Color(0xFF6418C3).withOpacity(0.1),
+                  color: const Color(0xFF6418C3).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon,
-                  color: Color(0xFF6418C3),
+                  color: const Color(0xFF6418C3),
                   size: 20,
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Text(
                 title,
                 style: TextStyle(
@@ -1448,7 +1463,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
               ),
             ],
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           ...children,
         ],
       ),
@@ -1469,7 +1484,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
           size: 20,
           color: iconColor,
         ),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Expanded(
           flex: 2,
           child: Text(
@@ -1508,7 +1523,7 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey[200]!),
           borderRadius: BorderRadius.circular(12),
@@ -1516,30 +1531,30 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(10),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Color(0xFF6418C3).withOpacity(0.1),
+                color: const Color(0xFF6418C3).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 icon,
-                color: Color(0xFF6418C3),
+                color: const Color(0xFF6418C3),
                 size: 22,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: TextStyle(
@@ -1613,35 +1628,5 @@ class _ManageBookingScreenState extends ConsumerState<ManageBookingScreen>
         return 'Status information not available';
     }
   }
-// Helper widget for detail rows in bottom sheet
-  Widget _detailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 }

@@ -6,7 +6,7 @@ import 'dart:convert';
 import '../Colors/coustcolors.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'firebase.dart';
+import '../Providers/firebase.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/hall_booking_provider.dart';
 
