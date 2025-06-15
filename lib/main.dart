@@ -255,9 +255,9 @@ class MyApp extends ConsumerWidget {
         '/wallet': (BuildContext context) {
           return const WalletScreen();
         },
-        '/location': (BuildContext context) {
+        /*'/location': (BuildContext context) {
           return const LocationScreen();
-        },
+        },*/
         '/venue_details': (BuildContext context) {
           return const StepByStepHallBookingScreen();
         },
